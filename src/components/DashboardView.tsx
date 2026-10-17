@@ -20,11 +20,13 @@ interface DashboardViewProps {
   participantes: Participante[]
   onNuevoMovimiento: () => void
   onVerMovimientos: () => void
+  onAbrirDetalleCaja?: () => void
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   movimientos,
   participantes,
+  onAbrirDetalleCaja,
 }) => {
   const [filtroPeriodo, setFiltroPeriodo] = useState<'todo' | 'este-mes' | 'mes-anterior' | 'esta-semana'>('todo')
 
@@ -243,12 +245,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Saldo en Caja */}
-        <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md relative overflow-hidden">
+        <div
+          onClick={onAbrirDetalleCaja}
+          className={`bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md relative overflow-hidden transition-all border border-indigo-500/20 ${
+            onAbrirDetalleCaja
+              ? 'cursor-pointer hover:border-indigo-400 hover:shadow-lg active:scale-[0.99] group'
+              : ''
+          }`}
+          title={onAbrirDetalleCaja ? 'Haz clic para ver el detalle y arqueo de caja' : undefined}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-200 uppercase tracking-wider">
+            <span className="text-xs font-bold text-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
               Saldo Disponible en Caja
+              {onAbrirDetalleCaja && (
+                <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded-full font-normal group-hover:bg-white/30 transition-colors">
+                  Ver detalle
+                </span>
+              )}
             </span>
-            <div className="p-2 rounded-xl bg-white/10 text-white">
+            <div className="p-2 rounded-xl bg-white/10 text-white group-hover:scale-110 transition-transform">
               <Wallet className="w-5 h-5 text-emerald-400" />
             </div>
           </div>

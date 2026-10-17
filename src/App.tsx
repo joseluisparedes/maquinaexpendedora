@@ -13,6 +13,7 @@ import { LoginView } from './components/LoginView'
 import { RegistrarFotoModal } from './components/RegistrarFotoModal'
 import { GaleriaFotosModal } from './components/GaleriaFotosModal'
 import { EditarMovimientoModal } from './components/EditarMovimientoModal'
+import { DetalleCajaModal } from './components/DetalleCajaModal'
 import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from './types'
 import { StorageService } from './utils/storage'
 import { DataService } from './utils/dataService'
@@ -60,6 +61,7 @@ export function App() {
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false)
   const [modalGaleriaAbierto, setModalGaleriaAbierto] = useState(false)
   const [movAEditar, setMovAEditar] = useState<Movimiento | null>(null)
+  const [modalCajaAbierto, setModalCajaAbierto] = useState(false)
 
   // Permisos dinámicos del usuario activo
   const permisos = useMemo(() => {
@@ -294,6 +296,7 @@ export function App() {
           }}
           onCerrarSesion={handleCerrarSesion}
           onVerDetalle={(m) => setDetalleMov(m)}
+          onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
         />
       ) : (
         /* VISTA 2: PANEL COMPLETO CON ACCESO CONTROLADO POR ROLES */
@@ -310,6 +313,7 @@ export function App() {
               setModalRegistroAbierto(true)
             }}
             onAbrirFotoMaquina={abrirRegistroFotoMaquina}
+            onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
             onReset={handleVaciarMovimientos}
             onVolverInicio={() => setModoAdmin(false)}
             onCerrarSesion={handleCerrarSesion}
@@ -326,6 +330,7 @@ export function App() {
                   setModalRegistroAbierto(true)
                 }}
                 onVerMovimientos={() => setVistaActual('movimientos')}
+                onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
               />
             )}
 
@@ -444,6 +449,18 @@ export function App() {
         fotos={fotosMaquina}
         participantes={participantes}
         onAbrirNuevaFoto={abrirRegistroFotoMaquina}
+      />
+
+      {/* Modal Detalle y Arqueo de Caja */}
+      <DetalleCajaModal
+        isOpen={modalCajaAbierto}
+        onClose={() => setModalCajaAbierto(false)}
+        movimientos={movimientos}
+        participantes={participantes}
+        onVerDetalleMovimiento={(m) => {
+          setModalCajaAbierto(false)
+          setDetalleMov(m)
+        }}
       />
     </>
   )

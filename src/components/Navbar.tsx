@@ -27,6 +27,7 @@ interface NavbarProps {
   permisos: PermisosRol
   onNuevoMovimiento: () => void
   onAbrirFotoMaquina: () => void
+  onAbrirDetalleCaja?: () => void
   onReset: () => void
   onVolverInicio: () => void
   onCerrarSesion: () => void
@@ -41,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   permisos,
   onNuevoMovimiento,
   onAbrirFotoMaquina,
+  onAbrirDetalleCaja,
   onReset,
   onVolverInicio,
   onCerrarSesion,
@@ -128,8 +130,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Saldo de Caja, Acciones Rápidas y Usuario */}
           <div className="flex items-center gap-2 sm:gap-3">
             {mostrarFinanzas && (
-              <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl shadow-xs">
-                <Wallet className="w-4 h-4 text-emerald-600" />
+              <button
+                type="button"
+                onClick={onAbrirDetalleCaja}
+                className="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100/90 active:scale-95 border border-emerald-200/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl shadow-xs transition-all cursor-pointer group"
+                title="Haz clic para ver el detalle de la caja y sus movimientos"
+              >
+                <Wallet className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
                 <div className="text-right">
                   <p className="text-[9px] uppercase font-bold text-emerald-700 tracking-wider">
                     Caja
@@ -138,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {formatearMoneda(saldoCaja)}
                   </p>
                 </div>
-              </div>
+              </button>
             )}
 
             {/* Botón Foto Máquina si tiene permiso */}

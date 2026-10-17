@@ -35,6 +35,7 @@ interface PantallaInicioMovilProps {
   onCerrarSesion: () => void
   onIrACierre: () => void
   onVerDetalle: (m: Movimiento) => void
+  onAbrirDetalleCaja?: () => void
 }
 
 export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
@@ -53,6 +54,7 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   onCerrarSesion,
   onIrACierre,
   onVerDetalle,
+  onAbrirDetalleCaja,
 }) => {
   const ultimosMovimientos = movimientos.slice(0, 3)
   const esOperador = !permisos.puede_ganar && !permisos.puede_comprar && permisos.puede_foto_maquina
@@ -263,11 +265,24 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
           /* CASO 3: SOCIOS INVERSIONISTAS Y ADMINISTRADOR */
           <>
             {/* Tarjeta de Saldo en Caja */}
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+            <div
+              onClick={onAbrirDetalleCaja}
+              className={`bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden transition-all border border-indigo-500/20 ${
+                onAbrirDetalleCaja
+                  ? 'cursor-pointer hover:border-indigo-400 active:scale-[0.98] group'
+                  : ''
+              }`}
+              title={onAbrirDetalleCaja ? 'Toca para ver el detalle y arqueo de caja' : undefined}
+            >
               <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-indigo-200 tracking-wider">
+                  <span className="text-[10px] uppercase font-bold text-indigo-200 tracking-wider flex items-center gap-1.5">
                     Saldo Disponible en Caja
+                    {onAbrirDetalleCaja && (
+                      <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded-full font-normal group-hover:bg-white/30 transition-colors">
+                        Ver detalle
+                      </span>
+                    )}
                   </span>
                   <p className="text-3xl font-black tracking-tight text-white mt-0.5">
                     {formatearMoneda(saldoCaja)}
@@ -276,7 +291,7 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                     Fondo disponible para próximas compras
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-400">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                   <Wallet className="w-6 h-6" />
                 </div>
               </div>
