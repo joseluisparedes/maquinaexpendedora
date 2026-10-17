@@ -12,6 +12,7 @@ import { AnularMovimientoModal } from './components/AnularMovimientoModal'
 import { LoginView } from './components/LoginView'
 import { RegistrarFotoModal } from './components/RegistrarFotoModal'
 import { GaleriaFotosModal } from './components/GaleriaFotosModal'
+import { EditarMovimientoModal } from './components/EditarMovimientoModal'
 import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from './types'
 import { StorageService } from './utils/storage'
 import { DataService } from './utils/dataService'
@@ -58,6 +59,7 @@ export function App() {
   const [movAAnular, setMovAAnular] = useState<Movimiento | null>(null)
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false)
   const [modalGaleriaAbierto, setModalGaleriaAbierto] = useState(false)
+  const [movAEditar, setMovAEditar] = useState<Movimiento | null>(null)
 
   // Permisos dinámicos del usuario activo
   const permisos = useMemo(() => {
@@ -168,6 +170,14 @@ export function App() {
       nuevosMovimientos = [movSobranteAsociado, ...nuevosMovimientos]
     }
     setMovimientos(nuevosMovimientos)
+  }
+
+  // Actualizar movimiento editado
+  const handleMovimientoActualizado = async (actualizado: Movimiento) => {
+    await DataService.updateMovimiento(actualizado)
+    setMovimientos((prev) =>
+      prev.map((m) => (m.id === actualizado.id ? actualizado : m))
+    )
   }
 
   // Guardar nueva foto de la máquina
@@ -331,6 +341,13 @@ export function App() {
                   }
                 }}
                 onVerDetalle={(m) => setDetalleMov(m)}
+                onEditar={(m) => {
+                  if (permisos.puede_gestionar_usuarios || permisos.puede_ganar || permisos.puede_comprar) {
+                    setMovAEditar(m)
+                  } else {
+                    alert('No tienes permisos para editar movimientos.')
+                  }
+                }}
                 onAnular={(m) => {
                   if (permisos.puede_gestionar_usuarios || permisos.puede_ganar) {
                     setMovAAnular(m)
@@ -402,6 +419,14 @@ export function App() {
         movimiento={movAAnular}
         onClose={() => setMovAAnular(null)}
         onConfirmarAnulacion={handleConfirmarAnulacion}
+      />
+
+      <EditarMovimientoModal
+        isOpen={Boolean(movAEditar)}
+        movimiento={movAEditar}
+        onClose={() => setMovAEditar(null)}
+        participantes={participantes}
+        onGuardarEdicion={handleMovimientoActualizado}
       />
 
       {/* Modal Registrar Foto de la Máquina */}

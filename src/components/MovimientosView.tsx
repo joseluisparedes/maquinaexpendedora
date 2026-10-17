@@ -9,6 +9,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ShoppingBag,
+  Edit2,
+  AlertTriangle,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -18,6 +20,7 @@ interface MovimientosViewProps {
   participantes: Participante[]
   onNuevoMovimiento: () => void
   onVerDetalle: (mov: Movimiento) => void
+  onEditar: (mov: Movimiento) => void
   onAnular: (mov: Movimiento) => void
 }
 
@@ -26,11 +29,12 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
   participantes,
   onNuevoMovimiento,
   onVerDetalle,
+  onEditar,
   onAnular,
 }) => {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'GANAR' | 'COMPRAR'>('TODOS')
-  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'REGISTRADO' | 'ANULADO'>('TODOS')
+  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'REGISTRADO' | 'ANULADO'>('REGISTRADO')
   const [filtroParticipante, setFiltroParticipante] = useState<string>('TODOS')
 
   const participantesMap = useMemo(() => {
@@ -297,10 +301,24 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
                               {formatearMoneda(mov.total_gastado || 0)}
                             </span>
                             <div className="text-[10px] text-slate-500">
-                              Asignado: {formatearMoneda(mov.monto_asignado || 0)}
-                              {(mov.monto_adicional || 0) > 0 && ` + S/ ${mov.monto_adicional} extra`}
-                              {(mov.monto_sobrante || 0) > 0 && ` − S/ ${mov.monto_sobrante} sobró`}
+                              Asignado caja: {formatearMoneda(mov.monto_asignado || 0)}
                             </div>
+                            {(mov.monto_adicional || 0) > 0 && (
+                              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                                {mov.quien_aporto_adicional && (
+                                  <span className="text-amber-800 font-bold">
+                                    ({participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {(mov.monto_sobrante || 0) > 0 && (
+                              <div className="text-[10px] text-emerald-600 font-medium">
+                                Sobró: −{formatearMoneda(mov.monto_sobrante || 0)} ({mov.destino_sobrante})
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>
@@ -326,6 +344,16 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+
+                          {mov.estado === 'REGISTRADO' && (
+                            <button
+                              onClick={() => onEditar(mov)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="Editar este movimiento"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {mov.estado === 'REGISTRADO' && (
                             <button

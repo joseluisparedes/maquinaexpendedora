@@ -440,15 +440,22 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                             </p>
                             <p className="text-[10px] text-slate-400">{m.fecha} • {m.tipo}</p>
                           </div>
-                          <span
-                            className={`font-black ${
-                              m.tipo === 'GANAR' ? 'text-emerald-700' : 'text-slate-900'
-                            }`}
-                          >
-                            {m.tipo === 'GANAR'
-                              ? `+${formatearMoneda(m.monto_ganado || 0)}`
-                              : formatearMoneda(m.total_gastado || 0)}
-                          </span>
+                          <div className="text-right">
+                            <span
+                              className={`font-black ${
+                                m.tipo === 'GANAR' ? 'text-emerald-700' : 'text-slate-900'
+                              }`}
+                            >
+                              {m.tipo === 'GANAR'
+                                ? `+${formatearMoneda(m.monto_ganado || 0)}`
+                                : formatearMoneda(m.total_gastado || 0)}
+                            </span>
+                            {(m.monto_adicional || 0) > 0 && (
+                              <div className="text-[10px] font-extrabold text-amber-700">
+                                ⚠️ Faltó: +{formatearMoneda(m.monto_adicional || 0)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

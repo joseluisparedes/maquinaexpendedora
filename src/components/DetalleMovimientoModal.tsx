@@ -9,6 +9,7 @@ import {
   Receipt,
   Eye,
   Download,
+  AlertTriangle,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -183,6 +184,22 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
           {/* Desglose COMPRAR */}
           {!esGanar && (
             <div className="space-y-3">
+              {(movimiento.monto_adicional || 0) > 0 && (
+                <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-start gap-3 text-amber-950 shadow-xs">
+                  <div className="w-8 h-8 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertTriangle className="w-5 h-5 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-amber-900">
+                      ⚠️ Faltó dinero en caja (+{formatearMoneda(movimiento.monto_adicional || 0)})
+                    </p>
+                    <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                      El socio <strong className="text-amber-950 font-black">{partMap.get(movimiento.quien_aporto_adicional || '')?.nombre || 'Socio'}</strong> cubrió este faltante de su propio bolsillo. El gasto total de la compra fue de <strong className="font-black text-slate-900">{formatearMoneda(movimiento.total_gastado || 0)}</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-600">Monto Asignado (Caja):</span>

@@ -333,4 +333,37 @@ export const DataService = {
   async saveFotoMaquina(foto: FotoMaquina): Promise<void> {
     StorageService.addFotoMaquina(foto)
   },
+
+  async updateMovimiento(actualizado: Movimiento): Promise<void> {
+    const locales = StorageService.getMovimientos()
+    const index = locales.findIndex((m) => m.id === actualizado.id)
+    if (index >= 0) {
+      locales[index] = actualizado
+    }
+    StorageService.saveMovimientos(locales)
+
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('vending_movimientos')
+          .update({
+            fecha: actualizado.fecha,
+            descripcion: actualizado.descripcion,
+            monto_ganado: actualizado.monto_ganado,
+            monto_asignado: actualizado.monto_asignado,
+            monto_adicional: actualizado.monto_adicional,
+            monto_sobrante: actualizado.monto_sobrante,
+            total_gastado: actualizado.total_gastado,
+            proveedor: actualizado.proveedor,
+            destino_sobrante: actualizado.destino_sobrante,
+            quien_aporto_adicional: actualizado.quien_aporto_adicional,
+            registrado_por: actualizado.registrado_por,
+            comprobantes: actualizado.comprobantes,
+          })
+          .eq('id', actualizado.id)
+      } catch (err) {
+        console.warn('Error actualizando movimiento en Supabase', err)
+      }
+    }
+  },
 }

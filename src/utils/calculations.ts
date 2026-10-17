@@ -84,10 +84,17 @@ export function calcularBalance(movimientos: Movimiento[]): BalanceMetricas {
       totalGastado += gastadoReal
       totalAdicionalAportado += adicional
 
-      saldoCaja -= asignado
+      // El monto total cuando falta dinero afecta la caja (ej. 210 asignado + 40 extra = 250)
+      if (adicional > 0) {
+        saldoCaja -= gastadoReal
+      } else {
+        saldoCaja -= asignado
+        if (mov.destino_sobrante === 'CAJA') {
+          saldoCaja += sobrante
+        }
+      }
 
       if (mov.destino_sobrante === 'CAJA') {
-        saldoCaja += sobrante
         totalSobrantesCaja += sobrante
       }
 
