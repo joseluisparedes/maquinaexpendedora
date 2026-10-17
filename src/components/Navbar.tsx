@@ -11,6 +11,7 @@ import {
   PlusCircle,
   Cloud,
   CloudOff,
+  ArrowLeft,
 } from 'lucide-react'
 import { formatearMoneda } from '../utils/calculations'
 
@@ -21,6 +22,7 @@ interface NavbarProps {
   conectadoSupabase: boolean
   onNuevoMovimiento: () => void
   onReset: () => void
+  onVolverInicio: () => void
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -30,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   conectadoSupabase,
   onNuevoMovimiento,
   onReset,
+  onVolverInicio,
 }) => {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -43,18 +46,24 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Marca */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+          {/* Logo & Marca con botón Volver al Inicio Rápido */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={onVolverInicio}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Volver a los 2 botones de inicio (Ganar / Comprar)"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Inicio Rápido</span>
+            </button>
+
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-xs">
               <Coins className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg">
+                <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-base">
                   Finanzas Vending
-                </span>
-                <span className="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-0.5 rounded-full border border-indigo-200/60">
-                  Colegio
                 </span>
                 {conectadoSupabase ? (
                   <span
@@ -62,7 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     title="Conectado y sincronizado con Supabase"
                   >
                     <Cloud className="w-3 h-3 text-emerald-600" />
-                    Supabase
+                    <span className="hidden sm:inline">Supabase</span>
                   </span>
                 ) : (
                   <span
@@ -70,23 +79,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     title="Operando en almacenamiento local"
                   >
                     <CloudOff className="w-3 h-3 text-slate-400" />
-                    Modo Local
+                    <span className="hidden sm:inline">Local</span>
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">
-                Control de compras, recaudaciones y utilidades
-              </p>
             </div>
           </div>
 
           {/* Saldo de Caja y Acciones Rápidas */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl shadow-xs">
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl shadow-xs">
               <Wallet className="w-4 h-4 text-emerald-600" />
               <div className="text-right">
-                <p className="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">
-                  Saldo en Caja
+                <p className="text-[9px] uppercase font-bold text-emerald-700 tracking-wider">
+                  Caja
                 </p>
                 <p className="text-xs sm:text-sm font-extrabold text-emerald-800">
                   {formatearMoneda(saldoCaja)}
@@ -96,10 +102,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={onNuevoMovimiento}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-colors cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Nuevo</span> Movimiento
+              <span className="hidden sm:inline">Nuevo</span>
             </button>
           </div>
         </div>
@@ -128,8 +134,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="ml-auto pl-2 flex items-center">
             <button
               onClick={onReset}
-              title="Restaurar datos de ejemplo"
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-100 transition-colors"
+              title="Vaciar movimientos"
+              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>

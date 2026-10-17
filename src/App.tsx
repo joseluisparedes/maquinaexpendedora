@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Navbar } from './components/Navbar'
+import { PantallaInicioMovil } from './components/PantallaInicioMovil'
 import { DashboardView } from './components/DashboardView'
 import { MovimientosView } from './components/MovimientosView'
 import { CierrePeriodoView } from './components/CierrePeriodoView'
@@ -14,6 +15,9 @@ import { DataService } from './utils/dataService'
 import { calcularBalance } from './utils/calculations'
 
 export function App() {
+  // Pantalla inicial: true = panel completo, false = 2 botones rápidos (Ganar / Comprar)
+  const [modoAdmin, setModoAdmin] = useState(false)
+
   const [vistaActual, setVistaActual] = useState<
     'dashboard' | 'movimientos' | 'cierre' | 'participantes' | 'config'
   >('dashboard')
@@ -25,9 +29,7 @@ export function App() {
   const [configs, setConfigs] = useState<ConfigReparto[]>(() =>
     StorageService.getConfigRepartos()
   )
-  const [movimientos, setMovimientos] = useState<Movimiento[]>(() =>
-    StorageService.getMovimientos()
-  )
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([])
 
   // Estado conexión Supabase
   const [conectadoSupabase, setConectadoSupabase] = useState(false)
@@ -35,13 +37,14 @@ export function App() {
 
   // Modales
   const [modalRegistroAbierto, setModalRegistroAbierto] = useState(false)
+  const [tipoModalInicial, setTipoModalInicial] = useState<'GANAR' | 'COMPRAR'>('GANAR')
   const [detalleMov, setDetalleMov] = useState<Movimiento | null>(null)
   const [movAAnular, setMovAAnular] = useState<Movimiento | null>(null)
 
   // Balance general para Saldo en Caja en navbar
   const balanceGeneral = useMemo(() => calcularBalance(movimientos), [movimientos])
 
-  // Cargar datos iniciales
+  // Cargar datos
   const cargarDatos = useCallback(async () => {
     const estado = await DataService.verificarConexionSupabase()
     setConectadoSupabase(estado.conectado)
@@ -61,6 +64,17 @@ export function App() {
   useEffect(() => {
     cargarDatos()
   }, [cargarDatos])
+
+  // Triggers para abrir Ganar o Comprar directo desde la pantalla inicial
+  const abrirRegistroGanar = () => {
+    setTipoModalInicial('GANAR')
+    setModalRegistroAbierto(true)
+  }
+
+  const abrirRegistroComprar = () => {
+    setTipoModalInicial('COMPRAR')
+    setModalRegistroAbierto(true)
+  }
 
   // Guardar un nuevo movimiento (y su sobrante vinculado si aplica)
   const handleMovimientoGuardado = async (
@@ -116,7 +130,7 @@ export function App() {
     setParticipantes(participantes.map((p) => (p.id === part.id ? part : p)))
   }
 
-  // Restaurar datos de ejemplo
+  // Vaciar todos los movimientos
   const handleVaciarMovimientos = async () => {
     if (
       window.confirm(
@@ -129,76 +143,104 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      {/* Barra de navegación superior */}
-      <Navbar
-        vistaActual={vistaActual}
-        setVistaActual={setVistaActual}
-        saldoCaja={balanceGeneral.saldoCaja}
-        conectadoSupabase={conectadoSupabase}
-        onNuevoMovimiento={() => setModalRegistroAbierto(true)}
-        onReset={handleVaciarMovimientos}
-      />
-
-      {/* Contenido Principal */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {vistaActual === 'dashboard' && (
-          <DashboardView
-            movimientos={movimientos}
-            participantes={participantes}
-            onNuevoMovimiento={() => setModalRegistroAbierto(true)}
-            onVerMovimientos={() => setVistaActual('movimientos')}
-          />
-        )}
-
-        {vistaActual === 'movimientos' && (
-          <MovimientosView
-            movimientos={movimientos}
-            participantes={participantes}
-            onNuevoMovimiento={() => setModalRegistroAbierto(true)}
-            onVerDetalle={(m) => setDetalleMov(m)}
-            onAnular={(m) => setMovAAnular(m)}
-          />
-        )}
-
-        {vistaActual === 'cierre' && (
-          <CierrePeriodoView
-            movimientos={movimientos}
-            participantes={participantes}
-          />
-        )}
-
-        {vistaActual === 'participantes' && (
-          <ParticipantesView
-            participantes={participantes}
-            onActualizarParticipante={handleActualizarParticipante}
-          />
-        )}
-
-        {vistaActual === 'config' && (
-          <ConfiguracionView
-            configs={configs}
-            participantes={participantes}
+    <>
+      {/* VISTA 1: PANTALLA INICIAL MÓVIL (2 BOTONES: GANAR / COMPRAR) */}
+      {!modoAdmin ? (
+        <PantallaInicioMovil
+          saldoCaja={balanceGeneral.saldoCaja}
+          conectadoSupabase={conectadoSupabase}
+          movimientos={movimientos}
+          onAbrirGanar={abrirRegistroGanar}
+          onAbrirComprar={abrirRegistroComprar}
+          onIngresarSistema={() => setModoAdmin(true)}
+          onIrACierre={() => {
+            setModoAdmin(true)
+            setVistaActual('cierre')
+          }}
+          onVerDetalle={(m) => setDetalleMov(m)}
+        />
+      ) : (
+        /* VISTA 2: PANEL COMPLETO CON ACCESO A TODAS LAS FUNCIONALIDADES */
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+          <Navbar
+            vistaActual={vistaActual}
+            setVistaActual={setVistaActual}
+            saldoCaja={balanceGeneral.saldoCaja}
             conectadoSupabase={conectadoSupabase}
-            mensajeSupabase={mensajeSupabase}
-            onGuardarConfig={handleGuardarConfig}
-            onRecargarTodo={cargarDatos}
-            onVerificarConexion={cargarDatos}
-            onVaciarMovimientos={handleVaciarMovimientos}
+            onNuevoMovimiento={() => {
+              setTipoModalInicial('GANAR')
+              setModalRegistroAbierto(true)
+            }}
+            onReset={handleVaciarMovimientos}
+            onVolverInicio={() => setModoAdmin(false)}
           />
-        )}
-      </main>
 
-      {/* Pie de página */}
-      <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
-        <p>
-          Sistema de Finanzas — Máquina Expendedora • Conectado a Supabase ({conectadoSupabase ? 'En línea' : 'Modo local'})
-        </p>
-      </footer>
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {vistaActual === 'dashboard' && (
+              <DashboardView
+                movimientos={movimientos}
+                participantes={participantes}
+                onNuevoMovimiento={() => {
+                  setTipoModalInicial('GANAR')
+                  setModalRegistroAbierto(true)
+                }}
+                onVerMovimientos={() => setVistaActual('movimientos')}
+              />
+            )}
 
-      {/* Modales */}
+            {vistaActual === 'movimientos' && (
+              <MovimientosView
+                movimientos={movimientos}
+                participantes={participantes}
+                onNuevoMovimiento={() => {
+                  setTipoModalInicial('GANAR')
+                  setModalRegistroAbierto(true)
+                }}
+                onVerDetalle={(m) => setDetalleMov(m)}
+                onAnular={(m) => setMovAAnular(m)}
+              />
+            )}
+
+            {vistaActual === 'cierre' && (
+              <CierrePeriodoView
+                movimientos={movimientos}
+                participantes={participantes}
+              />
+            )}
+
+            {vistaActual === 'participantes' && (
+              <ParticipantesView
+                participantes={participantes}
+                onActualizarParticipante={handleActualizarParticipante}
+              />
+            )}
+
+            {vistaActual === 'config' && (
+              <ConfiguracionView
+                configs={configs}
+                participantes={participantes}
+                conectadoSupabase={conectadoSupabase}
+                mensajeSupabase={mensajeSupabase}
+                onGuardarConfig={handleGuardarConfig}
+                onRecargarTodo={cargarDatos}
+                onVerificarConexion={cargarDatos}
+                onVaciarMovimientos={handleVaciarMovimientos}
+              />
+            )}
+          </main>
+
+          <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
+            <p>
+              Sistema de Finanzas — Máquina Expendedora • Conectado a Supabase ({conectadoSupabase ? 'En línea' : 'Modo local'})
+            </p>
+          </footer>
+        </div>
+      )}
+
+      {/* Modales Compartidos */}
       <RegistrarMovimientoModal
         isOpen={modalRegistroAbierto}
+        tipoInicial={tipoModalInicial}
         onClose={() => setModalRegistroAbierto(false)}
         participantes={participantes}
         onMovimientoGuardado={handleMovimientoGuardado}
@@ -215,7 +257,7 @@ export function App() {
         onClose={() => setMovAAnular(null)}
         onConfirmarAnulacion={handleConfirmarAnulacion}
       />
-    </div>
+    </>
   )
 }
 

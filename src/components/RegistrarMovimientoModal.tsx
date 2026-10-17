@@ -13,6 +13,7 @@ import { calcularReparto, formatearMoneda } from '../utils/calculations'
 
 interface RegistrarMovimientoModalProps {
   isOpen: boolean
+  tipoInicial?: 'GANAR' | 'COMPRAR'
   onClose: () => void
   participantes: Participante[]
   onMovimientoGuardado: (mov: Movimiento, movSobranteAsociado?: Movimiento) => void
@@ -20,6 +21,7 @@ interface RegistrarMovimientoModalProps {
 
 export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> = ({
   isOpen,
+  tipoInicial = 'GANAR',
   onClose,
   participantes,
   onMovimientoGuardado,
@@ -27,7 +29,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   if (!isOpen) return null
 
   const hoyStr = new Date().toISOString().slice(0, 10)
-  const [tipo, setTipo] = useState<'GANAR' | 'COMPRAR'>('GANAR')
+  const [tipo, setTipo] = useState<'GANAR' | 'COMPRAR'>(tipoInicial)
   const [fecha, setFecha] = useState<string>(hoyStr)
   const [descripcion, setDescripcion] = useState<string>('')
   const [registradoPor, setRegistradoPor] = useState<string>(

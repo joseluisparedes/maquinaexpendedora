@@ -3,15 +3,25 @@ import type { ConfigReparto, Movimiento, Participante } from '../types'
 const STORAGE_KEYS = {
   PARTICIPANTES: 'vending_finanzas_participantes_v1',
   CONFIG_REPARTO: 'vending_finanzas_config_reparto_v1',
-  MOVIMIENTOS: 'vending_finanzas_movimientos_v1',
+  MOVIMIENTOS: 'vending_finanzas_movimientos_v3',
+}
+
+// Limpiar versiones antiguas de caché para que no queden datos de prueba
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('vending_finanzas_movimientos_v1')
+    localStorage.removeItem('vending_finanzas_movimientos_v2')
+  } catch {
+    // ignore
+  }
 }
 
 export const PARTICIPANTES_INICIALES: Participante[] = [
-  { id: 'part-1', nombre: 'Socio 1', rol: 'Socio Inversionista', es_socio: true, activo: true },
-  { id: 'part-2', nombre: 'Socio 2', rol: 'Socio Inversionista', es_socio: true, activo: true },
-  { id: 'part-3', nombre: 'Socio 3', rol: 'Socio Inversionista', es_socio: true, activo: true },
-  { id: 'part-4', nombre: 'Operador/a', rol: 'Operador de Máquina', es_socio: false, activo: true },
-  { id: 'part-5', nombre: 'Directora', rol: 'Directora del Colegio', es_socio: false, activo: true },
+  { id: 'part-1', nombre: 'José Luis', rol: 'Socio Inversionista', es_socio: true, activo: true },
+  { id: 'part-2', nombre: 'Marlon', rol: 'Socio Inversionista', es_socio: true, activo: true },
+  { id: 'part-3', nombre: 'Jesús', rol: 'Socio Inversionista', es_socio: true, activo: true },
+  { id: 'part-4', nombre: 'Rosita', rol: 'Operador de Máquina', es_socio: false, activo: true },
+  { id: 'part-5', nombre: 'Elsa', rol: 'Directora del Colegio', es_socio: false, activo: true },
 ]
 
 export const CONFIG_INICIAL: ConfigReparto[] = [
@@ -88,13 +98,13 @@ export const StorageService = {
   getMovimientos(): Movimiento[] {
     const raw = localStorage.getItem(STORAGE_KEYS.MOVIMIENTOS)
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(MOVIMIENTOS_INICIALES))
-      return MOVIMIENTOS_INICIALES
+      localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
+      return []
     }
     try {
       return JSON.parse(raw)
     } catch {
-      return MOVIMIENTOS_INICIALES
+      return []
     }
   },
 
@@ -105,7 +115,7 @@ export const StorageService = {
   resetData(): void {
     localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(PARTICIPANTES_INICIALES))
     localStorage.setItem(STORAGE_KEYS.CONFIG_REPARTO, JSON.stringify(CONFIG_INICIAL))
-    localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(MOVIMIENTOS_INICIALES))
+    localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
   },
 
   exportarBackup(): string {
