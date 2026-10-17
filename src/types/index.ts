@@ -59,6 +59,21 @@ export interface ProductoDetalle {
   subtotal: number
 }
 
+export interface DeudaSocioCompra {
+  id: string
+  movimiento_id: string
+  deudor_id: string // socio que debe cubrir su parte (ej: José Luis, Marlon)
+  acreedor_id: string // socio que puso el dinero extra (ej: Jesús)
+  monto_cuota: number // cuota equitativa sugerida (ej: 30)
+  monto_pagado?: number // monto real transferido/acordado (ej: 10 o 30)
+  estado: 'PENDIENTE' | 'PAGADO' | 'SALDADO'
+  fecha_pago?: string
+  observaciones_pago?: string
+  comprobantes_pago?: string[] // vouchers de Yape/transferencia
+  fecha_confirmacion?: string
+  confirmado_por?: string // acreedor o admin que dio el visto bueno
+}
+
 export interface AporteAdicional {
   id: string
   participante_id: string
@@ -107,6 +122,7 @@ export interface Movimiento {
   destino_sobrante?: 'CAJA' | 'REPARTO' | 'NINGUNO'
   quien_aporto_adicional?: string // participante_id
   aportes_adicionales?: AporteAdicional[]
+  deudas_socios?: DeudaSocioCompra[]
   aporte_devuelto?: boolean
   fecha_devolucion_aporte?: string
   devuelto_por?: string

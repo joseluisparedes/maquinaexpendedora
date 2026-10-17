@@ -184,9 +184,16 @@ export const DataService = {
           destino_sobrante: row.destino_sobrante,
           quien_aporto_adicional: row.quien_aporto_adicional,
           aportes_adicionales: row.aportes_adicionales,
+          deudas_socios:
+            Array.isArray(row.aportes_adicionales) && (row.aportes_adicionales[0] as any)?.deudas_socios
+              ? (row.aportes_adicionales[0] as any).deudas_socios
+              : undefined,
           aporte_devuelto: Boolean(
-            Array.isArray(row.aportes_adicionales) &&
-            row.aportes_adicionales.some((a: any) => a.estado === 'DEVUELTO')
+            (Array.isArray(row.aportes_adicionales) &&
+              (row.aportes_adicionales[0] as any)?.deudas_socios?.length > 0 &&
+              (row.aportes_adicionales[0] as any).deudas_socios.every((d: any) => d.estado === 'SALDADO')) ||
+            (Array.isArray(row.aportes_adicionales) &&
+              row.aportes_adicionales.some((a: any) => a.estado === 'DEVUELTO'))
           ),
           fecha_devolucion_aporte: Array.isArray(row.aportes_adicionales)
             ? row.aportes_adicionales.find((a: any) => a.estado === 'DEVUELTO')?.fecha_devolucion

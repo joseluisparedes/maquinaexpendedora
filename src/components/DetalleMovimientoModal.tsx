@@ -16,6 +16,7 @@ import {
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
 import { descargarImagen } from '../utils/imageHelper'
+import { obtenerDeudasDeMovimiento } from '../utils/deudasHelper'
 
 interface DetalleMovimientoModalProps {
   movimiento: Movimiento | null
@@ -283,6 +284,41 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
                   <span className="text-sm font-black">{formatearMoneda(movimiento.total_gastado || 0)}</span>
                 </div>
               </div>
+
+              {(movimiento.monto_adicional || 0) > 0 && (
+                <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-black text-amber-900 uppercase tracking-wider">
+                    <span>División de Cuotas entre Socios:</span>
+                    <span className="font-bold text-amber-700">Faltante: +{formatearMoneda(movimiento.monto_adicional || 0)}</span>
+                  </div>
+                  <div className="divide-y divide-amber-100 text-xs">
+                    {obtenerDeudasDeMovimiento(movimiento, participantes).map((d) => {
+                      const deudorNombre = partMap.get(d.deudor_id)?.nombre || d.deudor_id
+                      return (
+                        <div key={d.id} className="py-2 flex items-center justify-between">
+                          <span className="font-semibold text-slate-700">{deudorNombre}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">
+                              {formatearMoneda(d.monto_pagado ?? d.monto_cuota)}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                d.estado === 'SALDADO'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : d.estado === 'PAGADO'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {d.estado}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {movimiento.detalle_productos && movimiento.detalle_productos.length > 0 && (
                 <div>

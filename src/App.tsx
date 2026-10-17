@@ -15,10 +15,11 @@ import { GaleriaFotosModal } from './components/GaleriaFotosModal'
 import { EditarMovimientoModal } from './components/EditarMovimientoModal'
 import { DetalleCajaModal } from './components/DetalleCajaModal'
 import { ModalDevolucionAportes } from './components/ModalDevolucionAportes'
-import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from './types'
+import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion, DeudaSocioCompra } from './types'
 import { StorageService } from './utils/storage'
 import { DataService } from './utils/dataService'
 import { calcularBalance } from './utils/calculations'
+import { actualizarDeudaEnMovimiento, obtenerMetricasDeudasUsuario } from './utils/deudasHelper'
 
 export function App() {
   // Sesión de Usuario Activa
@@ -70,27 +71,16 @@ export function App() {
     return StorageService.getPermisos(usuarioActual)
   }, [usuarioActual, roles])
 
-  // Métricas reactivas de aportes pendientes para la campanita de notificación
-  const { cantidadAportesPendientes, montoAportesPendientes } = useMemo(() => {
-    let cant = 0
-    let monto = 0
-    movimientos
-      .filter((m) => m.estado === 'REGISTRADO' && m.tipo === 'COMPRAR' && (m.monto_adicional || 0) > 0)
-      .forEach((m) => {
-        if (m.aportes_adicionales && m.aportes_adicionales.length > 0) {
-          m.aportes_adicionales.forEach((ap) => {
-            if (ap.estado !== 'DEVUELTO') {
-              cant += 1
-              monto += ap.monto
-            }
-          })
-        } else if (!m.aporte_devuelto) {
-          cant += 1
-          monto += m.monto_adicional || 0
-        }
-      })
-    return { cantidadAportesPendientes: cant, montoAportesPendientes: monto }
-  }, [movimientos])
+  // Métricas reactivas de deudas y aportes para la campanita de notificación
+  const metricasDeudas = useMemo(() => {
+    if (!usuarioActual) {
+      return { badgeNotificaciones: 0, totalQueDebo: 0, totalQueMeDeben: 0 }
+    }
+    return obtenerMetricasDeudasUsuario(movimientos, participantes, usuarioActual)
+  }, [movimientos, participantes, usuarioActual])
+
+  const cantidadAportesPendientes = metricasDeudas.badgeNotificaciones
+  const montoAportesPendientes = metricasDeudas.totalQueDebo + metricasDeudas.totalQueMeDeben
 
   // Balance general para Saldo en Caja en navbar
   const balanceGeneral = useMemo(() => calcularBalance(movimientos), [movimientos])
@@ -317,6 +307,24 @@ export function App() {
     }
 
     setMovimientos(nuevosMovimientos)
+  }
+
+  // Actualizar una deuda específica entre socios
+  const handleActualizarDeuda = async (
+    movimientoId: string,
+    deudaActualizada: DeudaSocioCompra
+  ) => {
+    const mov = movimientos.find((m) => m.id === movimientoId)
+    if (!mov) return
+
+    const actualizado = actualizarDeudaEnMovimiento(mov, deudaActualizada, participantes)
+    await DataService.updateMovimiento(actualizado)
+    setMovimientos((prev) =>
+      prev.map((m) => (m.id === actualizado.id ? actualizado : m))
+    )
+    if (detalleMov && detalleMov.id === movimientoId) {
+      setDetalleMov(actualizado)
+    }
   }
 
   // Guardar nueva foto de la máquina
@@ -617,6 +625,7 @@ export function App() {
         participantes={participantes}
         usuarioActual={usuarioActual}
         onGuardarDevolucion={handleGuardarDevolucion}
+        onActualizarDeuda={handleActualizarDeuda}
       />
     </>
   )
