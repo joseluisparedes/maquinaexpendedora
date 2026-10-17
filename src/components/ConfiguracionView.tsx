@@ -354,6 +354,7 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
                   <div className="flex items-center gap-1 w-24">
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       max="100"
@@ -452,6 +453,7 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
                   <div className="flex items-center gap-1 w-24">
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       max="100"

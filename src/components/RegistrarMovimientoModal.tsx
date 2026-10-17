@@ -450,6 +450,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                     </span>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       required
@@ -582,6 +583,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                           </span>
                           <input
                             type="number"
+                            inputMode="decimal"
                             step="0.01"
                             min="0.01"
                             max={valorAsignado > 0 ? valorAsignado : undefined}
@@ -661,6 +663,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                             </span>
                             <input
                               type="number"
+                              inputMode="decimal"
                               step="0.01"
                               min="0.01"
                               required
@@ -854,6 +857,8 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                                 />
                                 <input
                                   type="number"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   min="1"
                                   placeholder="Cant"
                                   title="Cantidad"
@@ -869,6 +874,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                                 />
                                 <input
                                   type="number"
+                                  inputMode="decimal"
                                   step="0.01"
                                   min="0"
                                   placeholder="C.Unit"
@@ -973,6 +979,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                     </span>
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       min="0.01"
                       required
