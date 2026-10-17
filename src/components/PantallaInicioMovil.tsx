@@ -14,6 +14,7 @@ import {
   User,
   ReceiptText,
   Images,
+  Settings,
 } from 'lucide-react'
 import type { FotoMaquina, Movimiento, Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -30,6 +31,7 @@ interface PantallaInicioMovilProps {
   onAbrirFotoMaquina: () => void
   onAbrirGaleriaFotos: () => void
   onIngresarSistema: () => void
+  onIrAConfiguracion: () => void
   onCerrarSesion: () => void
   onIrACierre: () => void
   onVerDetalle: (m: Movimiento) => void
@@ -47,6 +49,7 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   onAbrirFotoMaquina,
   onAbrirGaleriaFotos,
   onIngresarSistema,
+  onIrAConfiguracion,
   onCerrarSesion,
   onIrACierre,
   onVerDetalle,
@@ -91,6 +94,17 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Si es Admin, acceso directo a Configuración General */}
+            {permisos.puede_config_reparto && (
+              <button
+                onClick={onIrAConfiguracion}
+                className="p-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer border border-purple-200/80"
+                title="Configuración General del Negocio"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Si tiene acceso a dashboard/movimientos/cierre, mostrar Ingresar al Sistema */}
             {(permisos.puede_ver_dashboard || permisos.puede_ver_movimientos || permisos.puede_gestionar_usuarios) && (
               <button
@@ -377,6 +391,20 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Botón Acceso Rápido a Configuración General para Administrador */}
+              {permisos.puede_config_reparto && (
+                <button
+                  onClick={onIrAConfiguracion}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-purple-50/70 hover:bg-purple-100 border border-purple-200 text-purple-950 text-xs font-bold flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-purple-600 shrink-0" />
+                    Configuración General (Repartos, Glosas, Respaldos)
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                </button>
+              )}
 
               {/* Movimientos Recientes */}
               {permisos.puede_ver_movimientos && (

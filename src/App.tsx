@@ -86,6 +86,17 @@ export function App() {
     setMovimientos(movs)
     setRoles(rls)
     setFotosMaquina(fts)
+
+    // Sincronizar sesión activa si el rol o PIN fue actualizado en la nube
+    setUsuarioActual((prev) => {
+      if (!prev) return null
+      const updated = parts.find((p) => p.id === prev.id)
+      if (updated) {
+        StorageService.saveSesionUsuario(updated)
+        return updated
+      }
+      return prev
+    })
   }, [])
 
   useEffect(() => {
@@ -263,11 +274,15 @@ export function App() {
             }
             setModoAdmin(true)
           }}
-          onCerrarSesion={handleCerrarSesion}
+          onIrAConfiguracion={() => {
+            setModoAdmin(true)
+            setVistaActual('config')
+          }}
           onIrACierre={() => {
             setModoAdmin(true)
             setVistaActual('cierre')
           }}
+          onCerrarSesion={handleCerrarSesion}
           onVerDetalle={(m) => setDetalleMov(m)}
         />
       ) : (

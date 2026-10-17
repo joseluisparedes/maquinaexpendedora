@@ -20,7 +20,22 @@ export const DataService = {
         return StorageService.getParticipantes()
       }
 
-      return data as Participante[]
+      const normalizados = (data as any[]).map((p) => {
+        const item = { ...p }
+        if (!item.pin) item.pin = '1234'
+        if (item.id === 'part-1' || item.nombre.toLowerCase().includes('josé luis')) {
+          item.rol = 'Administrador'
+          item.rol_id = 'admin'
+          item.es_socio = true
+        } else if (item.id === 'part-5' || item.nombre.toLowerCase().includes('elsa')) {
+          item.rol = 'Dueño del local'
+          item.rol_id = 'dueno_local'
+        }
+        return item
+      }) as Participante[]
+
+      StorageService.saveParticipantes(normalizados)
+      return normalizados
     } catch {
       return StorageService.getParticipantes()
     }
@@ -43,8 +58,10 @@ export const DataService = {
           id: part.id,
           nombre: part.nombre,
           rol: part.rol,
+          rol_id: part.rol_id,
           es_socio: part.es_socio,
           activo: part.activo,
+          pin: part.pin || '1234',
         })
       } catch (err) {
         console.warn('No se pudo sincronizar participante en Supabase', err)

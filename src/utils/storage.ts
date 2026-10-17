@@ -181,6 +181,16 @@ export const StorageService = {
 
     if (!participante) return rolVacio
 
+    // José Luis SIEMPRE tiene acceso de Administrador completo
+    if (
+      participante.id === 'part-1' ||
+      participante.nombre.toLowerCase().includes('josé luis') ||
+      participante.rol_id === 'admin' ||
+      participante.rol.toLowerCase().includes('admin')
+    ) {
+      return ROLES_INICIALES[0].permisos
+    }
+
     const roles = this.getRoles()
     // Buscar por rol_id primero, luego por nombre
     const rolDef = roles.find(

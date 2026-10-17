@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'config' as const,
-      label: 'Config. Reparto',
+      label: 'Configuración General',
       icon: Settings,
       visible: permisos.puede_config_reparto, // Solo Administrador
     },
