@@ -117,14 +117,14 @@ export function App() {
   }
 
   // Restaurar datos de ejemplo
-  const handleResetData = () => {
+  const handleVaciarMovimientos = async () => {
     if (
       window.confirm(
-        '¿Deseas restaurar los datos de ejemplo iniciales en almacenamiento local? Los cambios no exportados se reiniciarán.'
+        '¿Estás seguro de que deseas eliminar TODOS los movimientos registrados? Esta acción reiniciará los saldos a S/ 0.00 tanto en Supabase como en tu navegador.'
       )
     ) {
-      StorageService.resetData()
-      cargarDatos()
+      await DataService.clearAllMovimientos()
+      setMovimientos([])
     }
   }
 
@@ -137,7 +137,7 @@ export function App() {
         saldoCaja={balanceGeneral.saldoCaja}
         conectadoSupabase={conectadoSupabase}
         onNuevoMovimiento={() => setModalRegistroAbierto(true)}
-        onReset={handleResetData}
+        onReset={handleVaciarMovimientos}
       />
 
       {/* Contenido Principal */}
@@ -184,6 +184,7 @@ export function App() {
             onGuardarConfig={handleGuardarConfig}
             onRecargarTodo={cargarDatos}
             onVerificarConexion={cargarDatos}
+            onVaciarMovimientos={handleVaciarMovimientos}
           />
         )}
       </main>

@@ -112,46 +112,8 @@ export const DataService = {
       }
 
       if (data && data.length === 0) {
-        // Primera sincronización: subir los movimientos locales a Supabase
-        const locales = StorageService.getMovimientos()
-        if (locales.length > 0) {
-          try {
-            await supabase.from('vending_movimientos').insert(
-              locales.map((m) => ({
-                id: m.id,
-                codigo: m.codigo,
-                fecha: m.fecha,
-                tipo: m.tipo,
-                descripcion: m.descripcion,
-                registrado_por: m.registrado_por,
-                estado: m.estado,
-                motivo_anulacion: m.motivo_anulacion,
-                origen_movimiento_id: m.origen_movimiento_id,
-                comprobante_url: m.comprobante_url,
-                monto_ganado: m.monto_ganado,
-                periodo_desde: m.periodo_desde,
-                periodo_hasta: m.periodo_hasta,
-                origen_ganancia: m.origen_ganancia,
-                snapshot_porcentajes: m.snapshot_porcentajes,
-                reparto: m.reparto,
-                monto_asignado: m.monto_asignado,
-                monto_adicional: m.monto_adicional,
-                monto_sobrante: m.monto_sobrante,
-                total_gastado: m.total_gastado,
-                proveedor: m.proveedor,
-                destino_sobrante: m.destino_sobrante,
-                quien_aporto_adicional: m.quien_aporto_adicional,
-                aportes_adicionales: m.aportes_adicionales,
-                detalle_productos: m.detalle_productos,
-                movimiento_sobrante_repartido_id: m.movimiento_sobrante_repartido_id,
-                creado_el: m.creado_el,
-              }))
-            )
-          } catch (e) {
-            console.warn('Error subiendo movimientos iniciales', e)
-          }
-        }
-        return locales
+        StorageService.saveMovimientos([])
+        return []
       }
 
       return data.map((row: any) => ({
@@ -285,6 +247,20 @@ export const DataService = {
       return { conectado: true, mensaje: 'Conectado y sincronizado con Supabase' }
     } catch (e: any) {
       return { conectado: false, mensaje: e?.message || 'Error de red con Supabase' }
+    }
+  },
+
+  async clearAllMovimientos(): Promise<void> {
+    StorageService.saveMovimientos([])
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('vending_movimientos')
+          .delete()
+          .gte('fecha', '1970-01-01')
+      } catch (err) {
+        console.warn('Error borrando movimientos en Supabase', err)
+      }
     }
   },
 }
