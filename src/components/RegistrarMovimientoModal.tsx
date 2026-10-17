@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   X,
   TrendingUp,
@@ -6,6 +6,14 @@ import {
   Calculator,
   Plus,
   Trash2,
+  CheckCircle2,
+  Coins,
+  Receipt,
+  HelpCircle,
+  Users,
+  Store,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import type { Movimiento, Participante, ProductoDetalle } from '../types'
 import { StorageService } from '../utils/storage'
@@ -19,6 +27,8 @@ interface RegistrarMovimientoModalProps {
   onMovimientoGuardado: (mov: Movimiento, movSobranteAsociado?: Movimiento) => void
 }
 
+type ResultadoCompra = 'EXACTO' | 'SOBRANTE' | 'ADICIONAL'
+
 export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> = ({
   isOpen,
   tipoInicial = 'GANAR',
@@ -26,8 +36,6 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   participantes,
   onMovimientoGuardado,
 }) => {
-  if (!isOpen) return null
-
   const hoyStr = new Date().toISOString().slice(0, 10)
   const [tipo, setTipo] = useState<'GANAR' | 'COMPRAR'>(tipoInicial)
   const [fecha, setFecha] = useState<string>(hoyStr)
@@ -36,6 +44,14 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     participantes[0]?.id || ''
   )
 
+  // Sincronizar tipo cuando el modal se abre
+  useEffect(() => {
+    if (isOpen) {
+      setTipo(tipoInicial)
+      setFecha(new Date().toISOString().slice(0, 10))
+    }
+  }, [isOpen, tipoInicial])
+
   // Estado para GANAR
   const [montoGanado, setMontoGanado] = useState<number | ''>('')
   const [periodoDesde, setPeriodoDesde] = useState<string>('')
@@ -43,6 +59,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
 
   // Estado para COMPRAR
   const [montoAsignado, setMontoAsignado] = useState<number | ''>('')
+  const [resultadoCompra, setResultadoCompra] = useState<ResultadoCompra>('EXACTO')
   const [montoAdicional, setMontoAdicional] = useState<number | ''>('')
   const [quienAportoAdicional, setQuienAportoAdicional] = useState<string>(
     participantes[0]?.id || ''
@@ -50,6 +67,8 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [montoSobrante, setMontoSobrante] = useState<number | ''>('')
   const [destinoSobrante, setDestinoSobrante] = useState<'CAJA' | 'REPARTO'>('CAJA')
   const [proveedor, setProveedor] = useState<string>('')
+  const [mostrarDetalleProductos, setMostrarDetalleProductos] = useState<boolean>(false)
+  const [mostrarGuiaExplicativa, setMostrarGuiaExplicativa] = useState<boolean>(false)
   const [productos, setProductos] = useState<ProductoDetalle[]>([])
 
   // Configuración vigente de reparto
@@ -68,23 +87,32 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     return calcularReparto(montoGanado, configGanancia.detalles)
   }, [tipo, montoGanado, configGanancia])
 
-  // Cálculo del total comprado
+  // Valores normalizados para Comprar según el escenario seleccionado
+  const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
+  const valorAdicional =
+    resultadoCompra === 'ADICIONAL' && typeof montoAdicional === 'number'
+      ? Math.max(0, montoAdicional)
+      : 0
+  const valorSobrante =
+    resultadoCompra === 'SOBRANTE' && typeof montoSobrante === 'number'
+      ? Math.max(0, montoSobrante)
+      : 0
+
+  // Cálculo del total comprado real
   const totalGastadoReal = useMemo(() => {
-    const asignado = typeof montoAsignado === 'number' ? montoAsignado : 0
-    const adicional = typeof montoAdicional === 'number' ? montoAdicional : 0
-    const sobrante = typeof montoSobrante === 'number' ? montoSobrante : 0
-    return Math.max(0, Number((asignado + adicional - sobrante).toFixed(2)))
-  }, [montoAsignado, montoAdicional, montoSobrante])
+    return Math.max(0, Number((valorAsignado + valorAdicional - valorSobrante).toFixed(2)))
+  }, [valorAsignado, valorAdicional, valorSobrante])
 
   // Validación de sobrante no mayor a asignado
   const errorSobrante = useMemo(() => {
-    const asignado = typeof montoAsignado === 'number' ? montoAsignado : 0
-    const sobrante = typeof montoSobrante === 'number' ? montoSobrante : 0
-    if (sobrante > asignado) {
-      return 'El monto sobrante no puede ser mayor al monto asignado'
+    if (resultadoCompra === 'SOBRANTE' && valorSobrante > valorAsignado) {
+      return `El vuelto (S/ ${valorSobrante.toFixed(2)}) no puede ser mayor que el dinero sacado de la caja (S/ ${valorAsignado.toFixed(2)})`
     }
     return null
-  }, [montoAsignado, montoSobrante])
+  }, [resultadoCompra, valorSobrante, valorAsignado])
+
+  // Proveedores comunes sugeridos
+  const proveedoresFrecuentes = ['Makro', 'Vega', 'Metro', 'Mass', 'Mayorista']
 
   // Manejo de productos en Comprar
   const agregarProducto = () => {
@@ -98,6 +126,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         subtotal: 0,
       },
     ])
+    setMostrarDetalleProductos(true)
   }
 
   const actualizarProducto = (
@@ -124,6 +153,8 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     return Number(productos.reduce((acc, p) => acc + p.subtotal, 0).toFixed(2))
   }, [productos])
 
+  if (!isOpen) return null
+
   // Guardar Movimiento
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -134,7 +165,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     if (tipo === 'GANAR') {
       const monto = typeof montoGanado === 'number' ? montoGanado : 0
       if (monto <= 0) {
-        alert('Por favor ingresa un monto ganado válido')
+        alert('Por favor ingresa un monto ganado válido (mayor a 0)')
         return
       }
 
@@ -162,23 +193,19 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         return
       }
 
-      const asignado = typeof montoAsignado === 'number' ? montoAsignado : 0
-      const adicional = typeof montoAdicional === 'number' ? montoAdicional : 0
-      const sobrante = typeof montoSobrante === 'number' ? montoSobrante : 0
-
-      if (asignado <= 0 && adicional <= 0) {
-        alert('Debes ingresar al menos un monto asignado o un monto adicional')
+      if (valorAsignado <= 0 && valorAdicional <= 0) {
+        alert('Debes ingresar al menos el dinero sacado de la caja o el dinero aportado de bolsillo.')
         return
       }
 
       let movSobranteGenerado: Movimiento | undefined = undefined
-      let destinoFinal = sobrante > 0 ? destinoSobrante : 'NINGUNO'
+      const destinoFinal = valorSobrante > 0 ? destinoSobrante : 'NINGUNO'
       let idMovSobrante: string | undefined = undefined
 
-      if (sobrante > 0 && destinoSobrante === 'REPARTO') {
+      if (valorSobrante > 0 && destinoSobrante === 'REPARTO') {
         idMovSobrante = 'mov-sob-' + Date.now()
         const repartoSocios = configSobrante
-          ? calcularReparto(sobrante, configSobrante.detalles)
+          ? calcularReparto(valorSobrante, configSobrante.detalles)
           : []
 
         movSobranteGenerado = {
@@ -186,10 +213,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
           codigo: 'SOB-' + Date.now().toString().slice(-4),
           fecha,
           tipo: 'GANAR',
-          descripcion: `Reparto de sobrante de compra ${codigoGenerado}`,
+          descripcion: `Reparto de vuelto sobrante de compra ${codigoGenerado}`,
           registrado_por: registradoPor,
           estado: 'REGISTRADO',
-          monto_ganado: sobrante,
+          monto_ganado: valorSobrante,
           origen_ganancia: 'SOBRANTE_COMPRA',
           origen_movimiento_id: movId,
           snapshot_porcentajes: configSobrante ? [...configSobrante.detalles] : [],
@@ -206,16 +233,23 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         descripcion: descripcion.trim() || 'Compra de mercadería para la máquina',
         registrado_por: registradoPor,
         estado: 'REGISTRADO',
-        monto_asignado: asignado,
-        monto_adicional: adicional,
-        monto_sobrante: sobrante,
+        monto_asignado: valorAsignado,
+        monto_adicional: valorAdicional,
+        monto_sobrante: valorSobrante,
         total_gastado: totalGastadoReal,
         proveedor: proveedor.trim() || undefined,
-        destino_sobrante: destinoFinal as any,
-        quien_aporto_adicional: adicional > 0 ? quienAportoAdicional : undefined,
+        destino_sobrante: destinoFinal,
+        quien_aporto_adicional: valorAdicional > 0 ? quienAportoAdicional : undefined,
         aportes_adicionales:
-          adicional > 0
-            ? [{ id: 'ap-' + Date.now(), participante_id: quienAportoAdicional, monto: adicional, estado: 'PENDIENTE' }]
+          valorAdicional > 0
+            ? [
+                {
+                  id: 'ap-' + Date.now(),
+                  participante_id: quienAportoAdicional,
+                  monto: valorAdicional,
+                  estado: 'PENDIENTE',
+                },
+              ]
             : undefined,
         detalle_productos: productos.length > 0 ? productos : undefined,
         movimiento_sobrante_repartido_id: idMovSobrante,
@@ -228,34 +262,55 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     onClose()
   }
 
+  // Nombre de quien aportó adicional para las explicaciones
+  const socioAportante = participantes.find((p) => p.id === quienAportoAdicional)?.nombre || 'Socio'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[92vh] flex flex-col my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[94vh] flex flex-col my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Cabecera del Modal */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">
-              Registrar Nuevo Movimiento
-            </h3>
-            <p className="text-xs text-slate-500">
-              Registra una recaudación o compra con reparto y validación automática
-            </p>
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center text-white ${
+                tipo === 'COMPRAR'
+                  ? 'bg-gradient-to-tr from-amber-500 to-orange-600 shadow-xs'
+                  : 'bg-gradient-to-tr from-emerald-600 to-teal-600 shadow-xs'
+              }`}
+            >
+              {tipo === 'COMPRAR' ? (
+                <ShoppingBag className="w-5 h-5" />
+              ) : (
+                <TrendingUp className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight">
+                {tipo === 'COMPRAR' ? 'Comprar Mercadería' : 'Registrar Recaudación'}
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                {tipo === 'COMPRAR'
+                  ? 'Calcula el gasto neto y controla si sobró vuelto o faltó dinero'
+                  : 'Registra el dinero recaudado y repártelo automáticamente'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition-colors cursor-pointer"
+            title="Cerrar ventana"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Selector de Tipo */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          <div className="grid grid-cols-2 gap-3 p-1 bg-slate-100 rounded-2xl">
+        {/* Selector de Tipo (Ganar / Comprar) */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
+          <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl">
             <button
               type="button"
               onClick={() => setTipo('GANAR')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 tipo === 'GANAR'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
                   : 'text-slate-600 hover:text-slate-900'
@@ -267,7 +322,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
             <button
               type="button"
               onClick={() => setTipo('COMPRAR')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 tipo === 'COMPRAR'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
                   : 'text-slate-600 hover:text-slate-900'
@@ -278,10 +333,11 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
             </button>
           </div>
 
-          <form id="form-movimiento" onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form id="form-movimiento" onSubmit={handleSubmit} className="space-y-5">
+            {/* Fecha y Registrado Por */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                   Fecha del Movimiento
                 </label>
                 <input
@@ -289,18 +345,18 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                   required
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                   Registrado Por
                 </label>
                 <select
                   value={registradoPor}
                   onChange={(e) => setRegistradoPor(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 >
                   {participantes.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -311,15 +367,546 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
               </div>
             </div>
 
-            {/* FORMULARIO ESPECÍFICO: GANAR */}
+            {/* ======================================================== */}
+            {/* SECCIÓN COMPRAR (MERCADERÍA) - CLARA, PASO A PASO Y MÓVIL */}
+            {/* ======================================================== */}
+            {tipo === 'COMPRAR' && (
+              <div className="space-y-4">
+                {/* Botón de ayuda desplegable */}
+                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuiaExplicativa(!mostrarGuiaExplicativa)}
+                    className="w-full flex items-center justify-between text-left text-xs font-bold text-amber-900 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4 text-amber-700" />
+                      ¿Cómo funciona este formulario de compra?
+                    </span>
+                    {mostrarGuiaExplicativa ? (
+                      <ChevronUp className="w-4 h-4 text-amber-700" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-amber-700" />
+                    )}
+                  </button>
+                  {mostrarGuiaExplicativa && (
+                    <div className="mt-2 text-[11px] text-amber-900/90 space-y-1.5 border-t border-amber-200/60 pt-2 leading-relaxed">
+                      <p>
+                        <strong>1. Dinero de Caja:</strong> Pon cuánto dinero sacaste del fondo de la máquina para ir a la tienda.
+                      </p>
+                      <p>
+                        <strong>2. ¿Qué pasó al pagar?:</strong>
+                        <br />• <em>Gasto exacto:</em> Se gastó todo lo que sacaste.
+                        <br />• <em>Sobró vuelto:</em> La compra costó menos y traes vuelto en efectivo.
+                        <br />• <em>Faltó plata:</em> La compra costó más y alguien puso de su bolsillo para completarlo.
+                      </p>
+                      <p>
+                        El sistema calcula el gasto real automáticamente sin que tengas que hacer cálculos manuales.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* PASO 1: Dinero Retirado de Caja */}
+                <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-amber-500 transition-colors shadow-2xs">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div>
+                      <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                          1
+                        </span>
+                        ¿Cuánto dinero sacaste de la Caja? *
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Efectivo llevado de la máquina para pagar (si pagaste 100% de tu bolsillo, pon 0).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-2">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+                      S/
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      placeholder="0.00"
+                      value={montoAsignado}
+                      onChange={(e) =>
+                        setMontoAsignado(e.target.value ? parseFloat(e.target.value) : '')
+                      }
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Atajos de montos comunes para agilizar en celular */}
+                  <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
+                      Sugeridos:
+                    </span>
+                    {[50, 100, 150, 200, 300].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMontoAsignado(m)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-600 hover:text-amber-800 transition-colors shrink-0 cursor-pointer"
+                      >
+                        S/ {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PASO 2: ¿Cómo resultó la compra? (3 Estados Claros) */}
+                <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 space-y-3 shadow-2xs">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                        2
+                      </span>
+                      ¿Cómo resultó la compra con ese dinero? *
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Selecciona una de las 3 opciones según lo que ocurrió en la tienda:
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Opción 1: Exacto */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('EXACTO')
+                        setMontoSobrante('')
+                        setMontoAdicional('')
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'EXACTO'
+                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-extrabold text-xs">🎯 Costó Exacto</span>
+                        {resultadoCompra === 'EXACTO' && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Se gastó todo lo que se llevó. Ni sobró ni faltó.
+                      </p>
+                    </button>
+
+                    {/* Opción 2: Sobró vuelto */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('SOBRANTE')
+                        setMontoAdicional('')
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'SOBRANTE'
+                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20 text-amber-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-extrabold text-xs">💵 Sobró Dinero</span>
+                        {resultadoCompra === 'SOBRANTE' && (
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Costó menos y trajiste vuelto en efectivo.
+                      </p>
+                    </button>
+
+                    {/* Opción 3: Faltó y alguien completó */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('ADICIONAL')
+                        setMontoSobrante('')
+                      }}
+                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'ADICIONAL'
+                          ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-extrabold text-xs">💳 Faltó Dinero</span>
+                        {resultadoCompra === 'ADICIONAL' && (
+                          <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Costó más y alguien puso de su billetera.
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* CONTENIDO SI SOBRÓ DINERO */}
+                  {resultadoCompra === 'SOBRANTE' && (
+                    <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 uppercase mb-1">
+                          ¿Cuánto dinero sobró de vuelto? (S/) *
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                            S/
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            max={valorAsignado > 0 ? valorAsignado : undefined}
+                            required
+                            placeholder="0.00"
+                            value={montoSobrante}
+                            onChange={(e) =>
+                              setMontoSobrante(e.target.value ? parseFloat(e.target.value) : '')
+                            }
+                            className="w-full pl-9 pr-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                          />
+                        </div>
+                        {errorSobrante && (
+                          <p className="text-[11px] text-rose-600 font-bold mt-1">
+                            ⚠️ {errorSobrante}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Destino del vuelto */}
+                      <div>
+                        <label className="block text-[11px] font-bold text-amber-950 uppercase mb-1.5">
+                          ¿Qué se hace con este vuelto de S/ {valorSobrante.toFixed(2)}?
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setDestinoSobrante('CAJA')}
+                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                              destinoSobrante === 'CAJA'
+                                ? 'bg-white border-amber-500 ring-2 ring-amber-500/20 font-bold text-amber-950 shadow-2xs'
+                                : 'bg-white/60 border-amber-200/80 text-slate-700'
+                            }`}
+                          >
+                            <p className="font-bold flex items-center gap-1 text-slate-900">
+                              <Coins className="w-3.5 h-3.5 text-amber-600" />
+                              Regresar a la Caja
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                              Queda como saldo a favor de la máquina para la próxima compra
+                            </p>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDestinoSobrante('REPARTO')}
+                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                              destinoSobrante === 'REPARTO'
+                                ? 'bg-white border-amber-500 ring-2 ring-amber-500/20 font-bold text-amber-950 shadow-2xs'
+                                : 'bg-white/60 border-amber-200/80 text-slate-700'
+                            }`}
+                          >
+                            <p className="font-bold flex items-center gap-1 text-slate-900">
+                              <Users className="w-3.5 h-3.5 text-indigo-600" />
+                              Repartir entre Socios
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                              Se divide según porcentajes (José Luis 40%, Marlon 30%, Jesús 30%)
+                            </p>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CONTENIDO SI FALTÓ PLATA Y ALGUIEN COMPLETÓ */}
+                  {resultadoCompra === 'ADICIONAL' && (
+                    <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-indigo-950 uppercase mb-1">
+                            ¿Cuánto dinero extra puso? (S/) *
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                              S/
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              required
+                              placeholder="0.00"
+                              value={montoAdicional}
+                              onChange={(e) =>
+                                setMontoAdicional(
+                                  e.target.value ? parseFloat(e.target.value) : ''
+                                )
+                              }
+                              className="w-full pl-9 pr-3 py-2 bg-white border border-indigo-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-indigo-950 uppercase mb-1">
+                            ¿Quién puso este dinero de su bolsillo?
+                          </label>
+                          <select
+                            value={quienAportoAdicional}
+                            onChange={(e) => setQuienAportoAdicional(e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-xl text-xs font-bold text-slate-800"
+                          >
+                            {participantes.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nombre} ({p.rol})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-indigo-100/70 border border-indigo-200 text-[11px] text-indigo-950 flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
+                        <span>
+                          Quedará registrado como <strong>deuda pendiente de la máquina hacia {socioAportante}</strong> por S/ {valorAdicional.toFixed(2)}. Se le devolverá en el próximo cierre o recaudación.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* TARJETA DE ENTENDIMIENTO FINANCIERO (RESUMEN EN TIEMPO REAL) */}
+                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-md space-y-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs uppercase font-extrabold tracking-wider text-slate-200">
+                        Resumen Claro de la Operación
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30">
+                      En Tiempo Real
+                    </span>
+                  </div>
+
+                  {/* Desglose visual */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                        Gasto Real en Mercadería
+                      </p>
+                      <p className="text-lg font-black text-amber-400 mt-0.5">
+                        {formatearMoneda(totalGastadoReal)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">Total invertido en productos</p>
+                    </div>
+
+                    <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                        Salida Neta de Caja
+                      </p>
+                      <p className="text-lg font-black text-white mt-0.5">
+                        {formatearMoneda(
+                          Math.max(0, valorAsignado - (destinoSobrante === 'CAJA' ? valorSobrante : 0))
+                        )}
+                      </p>
+                      <p className="text-[10px] text-slate-400">Efectivo final que salió de la máquina</p>
+                    </div>
+                  </div>
+
+                  {/* Explicación en lenguaje humano */}
+                  <div className="bg-white/10 p-3 rounded-xl text-xs text-slate-200 leading-relaxed">
+                    <p className="font-bold text-amber-300 mb-0.5">💡 En palabras sencillas:</p>
+                    {resultadoCompra === 'EXACTO' && (
+                      <p>
+                        Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja y se gastaron{' '}
+                        <strong>{formatearMoneda(valorAsignado)}</strong> exactamente en mercadería. No hay vuelto ni deudas.
+                      </p>
+                    )}
+                    {resultadoCompra === 'SOBRANTE' && (
+                      <p>
+                        Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja, pero la mercadería costó solo{' '}
+                        <strong className="text-amber-300">{formatearMoneda(totalGastadoReal)}</strong>. El vuelto de{' '}
+                        <strong>{formatearMoneda(valorSobrante)}</strong>{' '}
+                        {destinoSobrante === 'CAJA'
+                          ? 'regresa íntegro a la caja de la máquina.'
+                          : 'se reparte inmediatamente entre los 3 socios.'}
+                      </p>
+                    )}
+                    {resultadoCompra === 'ADICIONAL' && (
+                      <p>
+                        Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja, pero la mercadería costó{' '}
+                        <strong className="text-amber-300">{formatearMoneda(totalGastadoReal)}</strong>. Como faltó dinero,{' '}
+                        <strong>{socioAportante}</strong> puso <strong>{formatearMoneda(valorAdicional)}</strong> de su bolsillo. La máquina le devolverá este monto.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* PASO 3: Proveedor & Detalle Opcional */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5 mb-1">
+                      <Store className="w-4 h-4 text-slate-500" />
+                      Proveedor / Lugar de Compra (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Makro, Vega, Metro, Mercado Mayorista..."
+                      value={proveedor}
+                      onChange={(e) => setProveedor(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
+                    />
+
+                    {/* Sugerencias de Proveedores Frecuentes */}
+                    <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto pb-1">
+                      {proveedoresFrecuentes.map((prov) => (
+                        <button
+                          key={prov}
+                          type="button"
+                          onClick={() => setProveedor(prov)}
+                          className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-600 transition-colors shrink-0 cursor-pointer"
+                        >
+                          +{prov}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Acordeón para detalle de productos */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setMostrarDetalleProductos(!mostrarDetalleProductos)}
+                      className="w-full flex items-center justify-between text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        Detalle de productos comprados ({productos.length})
+                      </span>
+                      {mostrarDetalleProductos ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    {mostrarDetalleProductos && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-slate-500">
+                            Anota qué snacks o bebidas compraste
+                          </span>
+                          <button
+                            type="button"
+                            onClick={agregarProducto}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Agregar Fila
+                          </button>
+                        </div>
+
+                        {productos.length > 0 ? (
+                          <div className="space-y-2">
+                            {productos.map((prod, index) => (
+                              <div
+                                key={prod.id}
+                                className="flex items-center gap-1.5 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200/80"
+                              >
+                                <input
+                                  type="text"
+                                  placeholder="Ej: Galleta Soda"
+                                  value={prod.producto}
+                                  onChange={(e) =>
+                                    actualizarProducto(index, 'producto', e.target.value)
+                                  }
+                                  className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                                />
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="Cant"
+                                  title="Cantidad"
+                                  value={prod.cantidad}
+                                  onChange={(e) =>
+                                    actualizarProducto(
+                                      index,
+                                      'cantidad',
+                                      parseInt(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-14 px-1.5 py-1.5 bg-white border border-slate-200 rounded-lg text-center text-xs"
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="C.Unit"
+                                  title="Costo Unitario S/"
+                                  value={prod.costo_unitario}
+                                  onChange={(e) =>
+                                    actualizarProducto(
+                                      index,
+                                      'costo_unitario',
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-16 px-1.5 py-1.5 bg-white border border-slate-200 rounded-lg text-right text-xs"
+                                />
+                                <span className="w-16 font-bold text-slate-800 text-right text-xs">
+                                  {formatearMoneda(prod.subtotal)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarProducto(index)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
+                                  title="Eliminar fila"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                            <div className="text-right text-xs font-bold text-slate-700 pt-1">
+                              Suma productos: {formatearMoneda(totalProductos)}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            <p className="text-[11px] text-slate-400">
+                              No has añadido productos aún. Pulsa en "+ Agregar Fila" si deseas registrar ítems detallados.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* SECCIÓN GANAR (RECAUDACIÓN) */}
+            {/* ======================================================== */}
             {tipo === 'GANAR' && (
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-emerald-500 transition-colors shadow-2xs">
+                  <label className="block text-xs font-black text-slate-800 uppercase mb-1">
                     Monto Ganado (Recaudación Retirada S/) *
                   </label>
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    Efectivo total retirado de la máquina expendedora para ser repartido.
+                  </p>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
                       S/
                     </span>
                     <input
@@ -332,44 +919,44 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                       onChange={(e) =>
                         setMontoGanado(e.target.value ? parseFloat(e.target.value) : '')
                       }
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                       Periodo Desde (Opcional)
                     </label>
                     <input
                       type="date"
                       value={periodoDesde}
                       onChange={(e) => setPeriodoDesde(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
                       Periodo Hasta (Opcional)
                     </label>
                     <input
                       type="date"
                       value={periodoHasta}
                       onChange={(e) => setPeriodoHasta(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
                     />
                   </div>
                 </div>
 
                 {/* Previsualización en Vivo del Reparto */}
-                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4">
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 shadow-2xs">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-900">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
                       <Calculator className="w-4 h-4 text-emerald-700" />
                       Reparto Automático Según % Vigentes
                     </div>
-                    <span className="text-[11px] text-emerald-700 font-semibold">
+                    <span className="text-xs text-emerald-800 font-extrabold">
                       Total: {formatearMoneda(typeof montoGanado === 'number' ? montoGanado : 0)}
                     </span>
                   </div>
@@ -382,9 +969,9 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                         return (
                           <div
                             key={rep.participante_id}
-                            className="flex items-center justify-between py-1 px-2.5 rounded-lg bg-white/80 border border-emerald-100"
+                            className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white border border-emerald-100 shadow-2xs"
                           >
-                            <span className="font-semibold text-slate-800">
+                            <span className="font-bold text-slate-800">
                               {part?.nombre} ({rep.porcentaje_aplicado}%)
                               {esUltimo && (
                                 <span className="ml-1 text-[10px] text-emerald-600 font-normal">
@@ -392,14 +979,14 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                                 </span>
                               )}
                             </span>
-                            <span className="font-bold text-emerald-800">
+                            <span className="font-black text-emerald-800 text-sm">
                               {formatearMoneda(rep.monto)}
                             </span>
                           </div>
                         )
                       })}
                       <p className="text-[10px] text-emerald-700 italic pt-1">
-                        *El sistema guarda una foto (snapshot) de estos porcentajes para que los reportes históricos no cambien.
+                        *El sistema guarda una foto inmutable (snapshot) de estos porcentajes para auditoría.
                       </p>
                     </div>
                   ) : (
@@ -411,291 +998,45 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
               </div>
             )}
 
-            {/* FORMULARIO ESPECÍFICO: COMPRAR */}
-            {tipo === 'COMPRAR' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Monto Asignado (De caja/presupuesto) *
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                        S/
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={montoAsignado}
-                        onChange={(e) =>
-                          setMontoAsignado(e.target.value ? parseFloat(e.target.value) : '')
-                        }
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Monto Extra Puesto (Adicional)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                        S/
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={montoAdicional}
-                        onChange={(e) =>
-                          setMontoAdicional(e.target.value ? parseFloat(e.target.value) : '')
-                        }
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quién aportó el adicional */}
-                {typeof montoAdicional === 'number' && montoAdicional > 0 && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                    <label className="block text-xs font-bold text-amber-900 uppercase mb-1">
-                      ¿Quién aportó el monto adicional (S/ {montoAdicional})?
-                    </label>
-                    <select
-                      value={quienAportoAdicional}
-                      onChange={(e) => setQuienAportoAdicional(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-xs font-semibold text-slate-800"
-                    >
-                      {participantes.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nombre} ({p.rol})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-amber-800 mt-1">
-                      Quedará registrado como aporte pendiente por reconocer o devolver.
-                    </p>
-                  </div>
-                )}
-
-                {/* Monto Sobrante */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Monto Sobrante (Si sobró dinero)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                        S/
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={montoSobrante}
-                        onChange={(e) =>
-                          setMontoSobrante(e.target.value ? parseFloat(e.target.value) : '')
-                        }
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
-                      />
-                    </div>
-                    {errorSobrante && (
-                      <p className="text-[11px] text-rose-600 font-semibold mt-1">
-                        {errorSobrante}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Proveedor (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej: Makro, Vega, etc."
-                      value={proveedor}
-                      onChange={(e) => setProveedor(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                    />
-                  </div>
-                </div>
-
-                {/* Manejo de Sobrante */}
-                {typeof montoSobrante === 'number' && montoSobrante > 0 && (
-                  <div className="p-4 bg-indigo-50/80 border border-indigo-200 rounded-2xl space-y-2">
-                    <label className="block text-xs font-black text-indigo-900 uppercase">
-                      Destino del Sobrante de S/ {montoSobrante.toFixed(2)}:
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => setDestinoSobrante('CAJA')}
-                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                          destinoSobrante === 'CAJA'
-                            ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 font-bold text-indigo-900 shadow-xs'
-                            : 'bg-white/60 border-slate-200 text-slate-700'
-                        }`}
-                      >
-                        <p className="font-bold">a) Devolver a Caja</p>
-                        <p className="text-[11px] text-slate-500">Queda como saldo para la próxima compra</p>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDestinoSobrante('REPARTO')}
-                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                          destinoSobrante === 'REPARTO'
-                            ? 'bg-white border-indigo-500 ring-2 ring-indigo-500/20 font-bold text-indigo-900 shadow-xs'
-                            : 'bg-white/60 border-slate-200 text-slate-700'
-                        }`}
-                      >
-                        <p className="font-bold">b) Repartir entre Socios</p>
-                        <p className="text-[11px] text-slate-500">Genera movimiento Ganar entre los 3 socios</p>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Resumen Gasto Real */}
-                <div className="bg-slate-900 text-white p-3.5 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] text-slate-400 uppercase font-semibold">
-                      Total Gastado Real de la Compra
-                    </p>
-                    <p className="text-[11px] text-slate-300">
-                      (Asignado + Adicional − Sobrante)
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xl font-black text-emerald-400">
-                      {formatearMoneda(totalGastadoReal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Detalle Productos */}
-                <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-700 uppercase">
-                      Detalle de Productos Comprados (Opcional)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={agregarProducto}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Agregar Producto
-                    </button>
-                  </div>
-
-                  {productos.length > 0 ? (
-                    <div className="space-y-2">
-                      {productos.map((prod, index) => (
-                        <div key={prod.id} className="flex items-center gap-2 text-xs">
-                          <input
-                            type="text"
-                            placeholder="Producto (ej. Coca Cola)"
-                            value={prod.producto}
-                            onChange={(e) =>
-                              actualizarProducto(index, 'producto', e.target.value)
-                            }
-                            className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg"
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="Cant"
-                            value={prod.cantidad}
-                            onChange={(e) =>
-                              actualizarProducto(
-                                index,
-                                'cantidad',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-16 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-center"
-                          />
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="C.Unit"
-                            value={prod.costo_unitario}
-                            onChange={(e) =>
-                              actualizarProducto(
-                                index,
-                                'costo_unitario',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-20 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-right"
-                          />
-                          <span className="w-20 font-bold text-slate-800 text-right">
-                            {formatearMoneda(prod.subtotal)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => eliminarProducto(index)}
-                            className="p-1 text-slate-400 hover:text-rose-600"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                      <div className="text-right text-xs font-bold text-slate-700 pt-1">
-                        Suma de productos: {formatearMoneda(totalProductos)}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic">
-                      No hay productos agregados. Puedes agregarlos para llevar control de lo comprado.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Descripción / Glosa (Opcional)
+            {/* Descripción general */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                Nota / Glosa Opcional
               </label>
               <input
                 type="text"
                 placeholder={
                   tipo === 'GANAR'
-                    ? 'Ej: Recaudación fin de mes, monedas retiradas'
-                    : 'Ej: Compra de gaseosas y galletas para rellenar'
+                    ? 'Ej: Recaudación semana 1, monedas retiradas'
+                    : 'Ej: Galletas Oreo, Coca Cola, reabastecimiento general'
                 }
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
               />
             </div>
           </form>
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
+        {/* Footer con Botones Táctiles Grandes para Celular */}
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+            className="px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
             form="form-movimiento"
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-indigo-100 transition-colors cursor-pointer"
+            className={`px-6 py-2.5 text-white rounded-xl text-xs sm:text-sm font-black shadow-md transition-all cursor-pointer ${
+              tipo === 'COMPRAR'
+                ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+            }`}
           >
-            Guardar Movimiento
+            Guardar {tipo === 'COMPRAR' ? 'Compra' : 'Recaudación'}
           </button>
         </div>
       </div>
