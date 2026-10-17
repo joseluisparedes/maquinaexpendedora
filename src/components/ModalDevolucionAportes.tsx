@@ -183,64 +183,60 @@ export const ModalDevolucionAportes: React.FC<ModalDevolucionAportesProps> = ({
     }
   }
 
-  // 2. Confirmar y saldar deuda (Lo hace el acreedor o el Admin con el visto bueno final)
-  const handleConfirmarSaldado = async (resumen: ResumenDeudaEntreSocios) => {
-    if (!onActualizarDeuda) return
+  // Estado para el modal de confirmación y saldado con UX moderna (sin window.confirm / window.prompt)
+  const [modalConfirmacion, setModalConfirmacion] = useState<{
+    resumen: ResumenDeudaEntreSocios
+    tipo: 'CONFIRMAR_PAGO' | 'SALDADO_DIRECTO'
+    monto: number
+    observacion: string
+  } | null>(null)
 
-    const deudorNombre = resumen.deudor.nombre
-    const monto = resumen.deuda.monto_pagado ?? resumen.deuda.monto_cuota
+  // Abrir modal de confirmación de pago
+  const abrirConfirmarPago = (resumen: ResumenDeudaEntreSocios) => {
+    setModalConfirmacion({
+      resumen,
+      tipo: 'CONFIRMAR_PAGO',
+      monto: resumen.deuda.monto_pagado ?? resumen.deuda.monto_cuota,
+      observacion: resumen.deuda.observaciones_pago || '',
+    })
+  }
 
-    const confirmar = window.confirm(
-      `¿Confirmas que se recibió ${formatearMoneda(monto)} de ${deudorNombre} y que la deuda queda completamente SALDADA?`
-    )
-    if (!confirmar) return
+  // Abrir modal de saldado directo
+  const abrirSaldadoDirecto = (resumen: ResumenDeudaEntreSocios) => {
+    setModalConfirmacion({
+      resumen,
+      tipo: 'SALDADO_DIRECTO',
+      monto: resumen.deuda.monto_cuota,
+      observacion: 'Saldado en efectivo / compensado',
+    })
+  }
 
+  // Ejecutar saldado definitivo en la base de datos
+  const ejecutarSaldadoFinal = async () => {
+    if (!modalConfirmacion || !onActualizarDeuda) return
+
+    const { resumen, tipo, monto, observacion } = modalConfirmacion
     setGuardandoId(resumen.deuda.id)
+
     try {
+      const hoy = new Date().toISOString().split('T')[0]
       const deudaActualizada: DeudaSocioCompra = {
         ...resumen.deuda,
         monto_pagado: monto,
         estado: 'SALDADO',
-        fecha_confirmacion: new Date().toISOString().split('T')[0],
+        fecha_pago: resumen.deuda.fecha_pago || hoy,
+        fecha_confirmacion: hoy,
         confirmado_por: usuarioActual.nombre,
+        observaciones_pago:
+          tipo === 'SALDADO_DIRECTO'
+            ? observacion.trim() || 'Saldado directo'
+            : resumen.deuda.observaciones_pago,
       }
 
       await onActualizarDeuda(resumen.movimiento.id, deudaActualizada)
+      setModalConfirmacion(null)
     } catch (err: any) {
       alert('Error confirmando el saldo: ' + (err?.message || 'Error inesperado'))
-    } finally {
-      setGuardandoId(null)
-    }
-  }
-
-  // 3. Saldado directo (el acreedor o admin declara saldado directamente sin comprobante previo)
-  const handleSaldadoDirecto = async (resumen: ResumenDeudaEntreSocios) => {
-    if (!onActualizarDeuda) return
-
-    const deudorNombre = resumen.deudor.nombre
-    const cuota = resumen.deuda.monto_cuota
-
-    const motivo = window.prompt(
-      `Indica si hay alguna observación para dar por saldada la deuda de ${deudorNombre} (${formatearMoneda(cuota)}):`,
-      'Saldado en efectivo / compensado'
-    )
-    if (motivo === null) return // usuario canceló el prompt
-
-    setGuardandoId(resumen.deuda.id)
-    try {
-      const deudaActualizada: DeudaSocioCompra = {
-        ...resumen.deuda,
-        monto_pagado: cuota,
-        estado: 'SALDADO',
-        fecha_pago: new Date().toISOString().split('T')[0],
-        fecha_confirmacion: new Date().toISOString().split('T')[0],
-        confirmado_por: usuarioActual.nombre,
-        observaciones_pago: motivo.trim() || 'Saldado directo',
-      }
-
-      await onActualizarDeuda(resumen.movimiento.id, deudaActualizada)
-    } catch (err: any) {
-      alert('Error saldando la deuda: ' + (err?.message || 'Error inesperado'))
     } finally {
       setGuardandoId(null)
     }
@@ -776,7 +772,7 @@ export const ModalDevolucionAportes: React.FC<ModalDevolucionAportesProps> = ({
                           {!yaPago && (
                             <button
                               type="button"
-                              onClick={() => handleSaldadoDirecto(resumen)}
+                              onClick={() => abrirSaldadoDirecto(resumen)}
                               disabled={guardando}
                               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
                               title="Marcar como saldado si te pagó en efectivo o lo acordaron directamente"
@@ -787,7 +783,7 @@ export const ModalDevolucionAportes: React.FC<ModalDevolucionAportesProps> = ({
 
                           <button
                             type="button"
-                            onClick={() => handleConfirmarSaldado(resumen)}
+                            onClick={() => abrirConfirmarPago(resumen)}
                             disabled={guardando}
                             className={`flex items-center gap-1.5 px-4 py-2 font-bold text-xs rounded-xl shadow-xs transition-transform active:scale-95 cursor-pointer ${
                               yaPago
@@ -875,7 +871,11 @@ export const ModalDevolucionAportes: React.FC<ModalDevolucionAportesProps> = ({
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => handleConfirmarSaldado(resumen)}
+                              onClick={() =>
+                                d.estado === 'PAGADO'
+                                  ? abrirConfirmarPago(resumen)
+                                  : abrirSaldadoDirecto(resumen)
+                              }
                               disabled={guardando}
                               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition-colors cursor-pointer"
                             >
@@ -979,6 +979,152 @@ export const ModalDevolucionAportes: React.FC<ModalDevolucionAportesProps> = ({
             Cerrar
           </button>
         </div>
+
+        {/* Sub-Modal Moderno de Confirmación y Saldado (Reemplazo nativo de window.confirm y window.prompt) */}
+        {modalConfirmacion && (
+          <div
+            className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in"
+            onClick={() => !guardandoId && setModalConfirmacion(null)}
+          >
+            <div
+              className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Cabecera con Icono Destacado */}
+              <div className="px-6 pt-6 pb-4 flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-600 flex items-center justify-center mb-3 shadow-inner">
+                  <CheckCircle2 className="w-8 h-8 stroke-[2.2]" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900">
+                  {modalConfirmacion.tipo === 'CONFIRMAR_PAGO'
+                    ? 'Confirmar Recepción y Saldar Deuda'
+                    : 'Marcar Deuda como Saldada'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                  {modalConfirmacion.tipo === 'CONFIRMAR_PAGO'
+                    ? '¿Das tu conformidad para dar esta deuda por completamente saldada?'
+                    : 'Declara que este compromiso ha sido pagado o compensado mutuamente.'}
+                </p>
+              </div>
+
+              {/* Tarjeta de Resumen Detallado */}
+              <div className="px-6 py-2 space-y-3">
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-semibold">Socio que paga:</span>
+                    <span className="font-bold text-slate-900 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
+                      {modalConfirmacion.resumen.deudor.nombre}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-semibold">Socio que recibe:</span>
+                    <span className="font-bold text-slate-900 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
+                      {modalConfirmacion.resumen.acreedor.nombre}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-semibold">Compra vinculada:</span>
+                    <span className="font-mono text-slate-700">
+                      {modalConfirmacion.resumen.movimiento.codigo} ({modalConfirmacion.resumen.movimiento.fecha})
+                    </span>
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                    <span className="font-bold text-slate-700">Monto total a saldar:</span>
+                    <span className="text-base font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                      {formatearMoneda(modalConfirmacion.monto)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Si es saldado directo: campo de observación editable */}
+                {modalConfirmacion.tipo === 'SALDADO_DIRECTO' ? (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
+                      Observación / Motivo del acuerdo
+                    </label>
+                    <input
+                      type="text"
+                      value={modalConfirmacion.observacion}
+                      onChange={(e) =>
+                        setModalConfirmacion({
+                          ...modalConfirmacion,
+                          observacion: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: Pagó en efectivo / compensado con almuerzo"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                ) : (
+                  modalConfirmacion.observacion && (
+                    <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-200/60 text-xs text-blue-900">
+                      <strong>Nota de {modalConfirmacion.resumen.deudor.nombre}:</strong>{' '}
+                      <em>"{modalConfirmacion.observacion}"</em>
+                    </div>
+                  )
+                )}
+
+                {/* Miniaturas de vouchers si fueron adjuntados */}
+                {modalConfirmacion.resumen.deuda.comprobantes_pago &&
+                  modalConfirmacion.resumen.deuda.comprobantes_pago.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase">Vouchers adjuntos:</span>
+                      <div className="flex gap-2">
+                        {modalConfirmacion.resumen.deuda.comprobantes_pago.map((f, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setFotoEnPantallaCompleta(f)}
+                            className="w-12 h-12 rounded-xl overflow-hidden border border-slate-300 relative group cursor-pointer"
+                            title="Ver en grande"
+                          >
+                            <img src={f} alt="voucher" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
+                              <Eye className="w-3.5 h-3.5" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setModalConfirmacion(null)}
+                  disabled={Boolean(guardandoId)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={ejecutarSaldadoFinal}
+                  disabled={Boolean(guardandoId)}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {guardandoId ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                      <span>Confirmar y Saldar Deuda</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Zoom para ver Comprobante en Pantalla Completa */}
         {fotoEnPantallaCompleta && (
