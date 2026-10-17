@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   X,
   TrendingUp,
@@ -15,10 +15,16 @@ import {
   ChevronUp,
   Calendar,
   Sparkles,
+  Camera,
+  ImageIcon,
+  Download,
+  Eye,
+  Loader2,
 } from 'lucide-react'
 import type { Movimiento, Participante, ProductoDetalle } from '../types'
 import { StorageService } from '../utils/storage'
 import { calcularReparto, formatearMoneda } from '../utils/calculations'
+import { comprimirImagen, descargarImagen } from '../utils/imageHelper'
 
 interface RegistrarMovimientoModalProps {
   isOpen: boolean
@@ -50,6 +56,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     if (isOpen) {
       setTipo(tipoInicial)
       setFecha(new Date().toISOString().slice(0, 10))
+      setProveedoresSeleccionados([])
+      setTextoProveedor('')
+      setComprobantes([])
+      setFotoEnPantallaCompleta(null)
     }
   }, [isOpen, tipoInicial])
 
@@ -87,10 +97,66 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   )
   const [montoSobrante, setMontoSobrante] = useState<number | ''>('')
   const [destinoSobrante, setDestinoSobrante] = useState<'CAJA' | 'REPARTO'>('CAJA')
-  const [proveedor, setProveedor] = useState<string>('')
+  const [proveedoresSeleccionados, setProveedoresSeleccionados] = useState<string[]>([])
+  const [textoProveedor, setTextoProveedor] = useState<string>('')
+  const [comprobantes, setComprobantes] = useState<string[]>([])
+  const [cargandoFoto, setCargandoFoto] = useState<boolean>(false)
+  const [fotoEnPantallaCompleta, setFotoEnPantallaCompleta] = useState<string | null>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const [mostrarDetalleProductos, setMostrarDetalleProductos] = useState<boolean>(false)
   const [mostrarGuiaExplicativa, setMostrarGuiaExplicativa] = useState<boolean>(false)
   const [productos, setProductos] = useState<ProductoDetalle[]>([])
+
+  // Manejo de múltiples proveedores
+  const agregarProveedor = (nombre: string) => {
+    const limpio = nombre.trim()
+    if (!limpio) return
+    if (!proveedoresSeleccionados.includes(limpio)) {
+      setProveedoresSeleccionados([...proveedoresSeleccionados, limpio])
+    }
+    setTextoProveedor('')
+  }
+
+  const toggleProveedor = (nombre: string) => {
+    if (proveedoresSeleccionados.includes(nombre)) {
+      setProveedoresSeleccionados(proveedoresSeleccionados.filter((p) => p !== nombre))
+    } else {
+      setProveedoresSeleccionados([...proveedoresSeleccionados, nombre])
+    }
+  }
+
+  const eliminarProveedor = (nombre: string) => {
+    setProveedoresSeleccionados(proveedoresSeleccionados.filter((p) => p !== nombre))
+  }
+
+  // Manejo de comprobantes (cámara y galería)
+  const handleSeleccionarArchivos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setCargandoFoto(true)
+    try {
+      const nuevasFotos: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        if (file.type.startsWith('image/')) {
+          const base64 = await comprimirImagen(file)
+          nuevasFotos.push(base64)
+        }
+      }
+      setComprobantes((prev) => [...prev, ...nuevasFotos])
+    } catch {
+      alert('Ocurrió un error al procesar las imágenes. Intenta nuevamente.')
+    } finally {
+      setCargandoFoto(false)
+      e.target.value = ''
+    }
+  }
+
+  const eliminarComprobante = (index: number) => {
+    setComprobantes(comprobantes.filter((_, i) => i !== index))
+  }
 
   // Configuración vigente de reparto
   const configGanancia = useMemo(() => {
@@ -246,6 +312,13 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         }
       }
 
+      const listaFinalProveedores = [
+        ...proveedoresSeleccionados,
+        ...(textoProveedor.trim() && !proveedoresSeleccionados.includes(textoProveedor.trim())
+          ? [textoProveedor.trim()]
+          : []),
+      ]
+
       const nuevoMov: Movimiento = {
         id: movId,
         codigo: codigoGenerado,
@@ -258,7 +331,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         monto_adicional: valorAdicional,
         monto_sobrante: valorSobrante,
         total_gastado: totalGastadoReal,
-        proveedor: proveedor.trim() || undefined,
+        proveedor: listaFinalProveedores.join(', ') || undefined,
+        proveedores: listaFinalProveedores.length > 0 ? listaFinalProveedores : undefined,
+        comprobante_url: comprobantes.length > 0 ? comprobantes[0] : undefined,
+        comprobantes: comprobantes.length > 0 ? comprobantes : undefined,
         destino_sobrante: destinoFinal,
         quien_aporto_adicional: valorAdicional > 0 ? quienAportoAdicional : undefined,
         aportes_adicionales:
@@ -775,34 +851,219 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                   </div>
                 </div>
 
-                {/* PASO 3: Proveedor & Detalle Opcional */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                {/* PASO 3: Lugares de Compra / Proveedores y Comprobantes */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4">
+                  {/* LUGARES DE COMPRA / PROVEEDORES MÚLTIPLES */}
                   <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5 mb-1">
-                      <Store className="w-4 h-4 text-slate-500" />
-                      Proveedor / Lugar de Compra (Opcional)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                        <Store className="w-4 h-4 text-slate-500" />
+                        Lugar(es) de Compra / Proveedores (Opcional)
+                      </label>
+                      {proveedoresSeleccionados.length > 0 && (
+                        <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          {proveedoresSeleccionados.length} seleccionado{proveedoresSeleccionados.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mb-2">
+                      Puedes añadir varios lugares si compraste en distintos sitios (ej: Makro, Vega, etc.)
+                    </p>
+
+                    {/* Chips de Proveedores Seleccionados */}
+                    {proveedoresSeleccionados.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2.5">
+                        {proveedoresSeleccionados.map((prov) => (
+                          <span
+                            key={prov}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-300 rounded-xl text-xs font-bold shadow-2xs animate-in fade-in"
+                          >
+                            <Store className="w-3.5 h-3.5 text-amber-600" />
+                            {prov}
+                            <button
+                              type="button"
+                              onClick={() => eliminarProveedor(prov)}
+                              className="ml-0.5 text-amber-600 hover:text-rose-600 rounded-full p-0.5 cursor-pointer"
+                              title="Quitar proveedor"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Input y botón para añadir proveedor libre */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Escribe otro lugar (ej: Bodega, Mercado Central)..."
+                        value={textoProveedor}
+                        onChange={(e) => setTextoProveedor(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            agregarProveedor(textoProveedor)
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => agregarProveedor(textoProveedor)}
+                        className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+                      >
+                        + Añadir
+                      </button>
+                    </div>
+
+                    {/* Sugerencias de Proveedores Frecuentes (Toggle) */}
+                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
+                        Comunes:
+                      </span>
+                      {proveedoresFrecuentes.map((prov) => {
+                        const estaSeleccionado = proveedoresSeleccionados.includes(prov)
+                        return (
+                          <button
+                            key={prov}
+                            type="button"
+                            onClick={() => toggleProveedor(prov)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 cursor-pointer ${
+                              estaSeleccionado
+                                ? 'bg-amber-600 text-white shadow-xs'
+                                : 'bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-800'
+                            }`}
+                          >
+                            {estaSeleccionado ? '✓ ' : '+'}{prov}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ======================================================== */}
+                  {/* SECCIÓN DE COMPROBANTES / FOTOS CON CÁMARA MÓVIL */}
+                  {/* ======================================================== */}
+                  <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                          <Camera className="w-4 h-4 text-indigo-600" />
+                          Comprobantes / Boletas ({comprobantes.length})
+                        </label>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Toma fotos con la cámara de tu celular o sube boletas desde tu galería.
+                        </p>
+                      </div>
+                      {comprobantes.length > 0 && (
+                        <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                          {comprobantes.length} foto{comprobantes.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inputs ocultos para Cámara y Galería */}
                     <input
-                      type="text"
-                      placeholder="Ej: Makro, Vega, Metro, Mercado Mayorista..."
-                      value={proveedor}
-                      onChange={(e) => setProveedor(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      ref={cameraInputRef}
+                      onChange={handleSeleccionarArchivos}
+                      className="hidden"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      ref={galleryInputRef}
+                      onChange={handleSeleccionarArchivos}
+                      className="hidden"
                     />
 
-                    {/* Sugerencias de Proveedores Frecuentes */}
-                    <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto pb-1">
-                      {proveedoresFrecuentes.map((prov) => (
-                        <button
-                          key={prov}
-                          type="button"
-                          onClick={() => setProveedor(prov)}
-                          className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-600 transition-colors shrink-0 cursor-pointer"
-                        >
-                          +{prov}
-                        </button>
-                      ))}
+                    {/* Botones táctiles grandes para celular */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={cargandoFoto}
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-tr from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>Tomar Foto (Abrir Cámara)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={cargandoFoto}
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200/80 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <ImageIcon className="w-4 h-4 text-slate-600" />
+                        <span>Subir de Galería / Archivos</span>
+                      </button>
                     </div>
+
+                    {/* Indicador de proceso de imagen */}
+                    {cargandoFoto && (
+                      <div className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-xl border border-indigo-200">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                        Optimizando imagen para celular...
+                      </div>
+                    )}
+
+                    {/* Grid de Miniaturas de Comprobantes */}
+                    {comprobantes.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                        {comprobantes.map((foto, index) => (
+                          <div
+                            key={index}
+                            className="group relative bg-slate-900 rounded-xl overflow-hidden border border-slate-200 aspect-4/3 flex flex-col justify-between shadow-2xs"
+                          >
+                            <img
+                              src={foto}
+                              alt={`Comprobante ${index + 1}`}
+                              className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                              onClick={() => setFotoEnPantallaCompleta(foto)}
+                            />
+
+                            <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                              #{index + 1}
+                            </span>
+
+                            {/* Acciones Rápidas */}
+                            <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between">
+                              <button
+                                type="button"
+                                onClick={() => setFotoEnPantallaCompleta(foto)}
+                                className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                                title="Ver en grande"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  descargarImagen(foto, `comprobante-${index + 1}.jpg`)
+                                }
+                                className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                                title="Descargar foto"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => eliminarComprobante(index)}
+                                className="p-1 rounded-lg bg-rose-500/80 hover:bg-rose-600 text-white transition-colors cursor-pointer"
+                                title="Eliminar comprobante"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Acordeón para detalle de productos */}
@@ -1269,6 +1530,43 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
           </button>
         </div>
       </div>
+
+      {/* Modal Lightbox de Pantalla Completa para Visualizar y Descargar Comprobante */}
+      {fotoEnPantallaCompleta && (
+        <div className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="max-w-2xl w-full flex items-center justify-between text-white pb-3 px-1">
+            <span className="font-extrabold text-sm flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-amber-400" />
+              Comprobante de Compra
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => descargarImagen(fotoEnPantallaCompleta, 'comprobante.jpg')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Descargar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFotoEnPantallaCompleta(null)}
+                className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer"
+                title="Cerrar vista previa"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="max-w-2xl w-full max-h-[82vh] overflow-auto flex items-center justify-center p-2 bg-black/40 rounded-2xl border border-white/10">
+            <img
+              src={fotoEnPantallaCompleta}
+              alt="Comprobante ampliado"
+              className="max-h-[80vh] w-auto max-w-full object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

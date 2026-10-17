@@ -1,7 +1,18 @@
-import React from 'react'
-import { X, TrendingUp, ShoppingBag, CheckCircle2, Ban } from 'lucide-react'
+import React, { useState } from 'react'
+import {
+  X,
+  TrendingUp,
+  ShoppingBag,
+  CheckCircle2,
+  Ban,
+  Store,
+  Receipt,
+  Eye,
+  Download,
+} from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
+import { descargarImagen } from '../utils/imageHelper'
 
 interface DetalleMovimientoModalProps {
   movimiento: Movimiento | null
@@ -14,6 +25,8 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
   onClose,
   participantes,
 }) => {
+  const [fotoEnPantallaCompleta, setFotoEnPantallaCompleta] = useState<string | null>(null)
+
   if (!movimiento) return null
 
   const partMap = new Map<string, Participante>()
@@ -23,8 +36,24 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
   const esGanar = movimiento.tipo === 'GANAR'
   const esAnulado = movimiento.estado === 'ANULADO'
 
+  // Normalizar lista de comprobantes
+  const comprobantesLista: string[] =
+    movimiento.comprobantes && movimiento.comprobantes.length > 0
+      ? movimiento.comprobantes
+      : movimiento.comprobante_url
+      ? [movimiento.comprobante_url]
+      : []
+
+  // Normalizar lista de proveedores
+  const proveedoresLista: string[] =
+    movimiento.proveedores && movimiento.proveedores.length > 0
+      ? movimiento.proveedores
+      : movimiento.proveedor
+      ? movimiento.proveedor.split(',').map((p) => p.trim()).filter(Boolean)
+      : []
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Cabecera */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
@@ -48,7 +77,7 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto text-xs sm:text-sm">
+        <div className="p-5 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto text-xs sm:text-sm">
           {/* Alerta de Anulado si aplica */}
           {esAnulado && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800">
@@ -60,7 +89,7 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
           )}
 
           {/* Datos Principales */}
-          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl">
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
             <div>
               <p className="text-[11px] font-bold text-slate-500 uppercase">Tipo</p>
               <p className="font-bold text-slate-900 mt-0.5 flex items-center gap-1">
@@ -90,6 +119,27 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Proveedores / Lugares de Compra */}
+          {proveedoresLista.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-1.5">
+                <Store className="w-3.5 h-3.5 text-slate-400" />
+                Lugar(es) de Compra ({proveedoresLista.length})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {proveedoresLista.map((prov) => (
+                  <span
+                    key={prov}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-950 border border-amber-200 rounded-xl text-xs font-bold"
+                  >
+                    <Store className="w-3 h-3 text-amber-600" />
+                    {prov}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Descripción */}
           {movimiento.descripcion && (
@@ -186,6 +236,57 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
               )}
             </div>
           )}
+
+          {/* Comprobantes / Fotos de Boletas */}
+          {comprobantesLista.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                  <Receipt className="w-4 h-4 text-indigo-600" />
+                  Comprobantes Adjuntos ({comprobantesLista.length})
+                </p>
+                <span className="text-[10px] text-slate-400">Toca para ampliar o descargar</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {comprobantesLista.map((foto, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative bg-slate-900 rounded-xl overflow-hidden border border-slate-200 aspect-4/3 flex flex-col justify-between shadow-2xs"
+                  >
+                    <img
+                      src={foto}
+                      alt={`Comprobante ${idx + 1}`}
+                      className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                      onClick={() => setFotoEnPantallaCompleta(foto)}
+                    />
+                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                      #{idx + 1}
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setFotoEnPantallaCompleta(foto)}
+                        className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                        title="Ver en grande"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          descargarImagen(foto, `comprobante-${movimiento.codigo}-${idx + 1}.jpg`)
+                        }
+                        className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                        title="Descargar comprobante"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -198,6 +299,45 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Lightbox para previsualización ampliada y descarga */}
+      {fotoEnPantallaCompleta && (
+        <div className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="max-w-2xl w-full flex items-center justify-between text-white pb-3 px-1">
+            <span className="font-extrabold text-sm flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-amber-400" />
+              Comprobante ({movimiento.codigo})
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  descargarImagen(fotoEnPantallaCompleta, `comprobante-${movimiento.codigo}.jpg`)
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Descargar
+              </button>
+              <button
+                type="button"
+                onClick={() => setFotoEnPantallaCompleta(null)}
+                className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all cursor-pointer"
+                title="Cerrar vista previa"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="max-w-2xl w-full max-h-[82vh] overflow-auto flex items-center justify-center p-2 bg-black/40 rounded-2xl border border-white/10">
+            <img
+              src={fotoEnPantallaCompleta}
+              alt="Comprobante ampliado"
+              className="max-h-[80vh] w-auto max-w-full object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

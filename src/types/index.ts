@@ -49,6 +49,7 @@ export interface Movimiento {
   estado: 'REGISTRADO' | 'ANULADO'
   motivo_anulacion?: string
   comprobante_url?: string
+  comprobantes?: string[] // Múltiples fotos o comprobantes
   origen_movimiento_id?: string // Si es sobrante de compra vinculada
 
   // Para movimientos GANAR
@@ -65,6 +66,7 @@ export interface Movimiento {
   monto_sobrante?: number
   total_gastado?: number // Calculado: monto_asignado + monto_adicional - monto_sobrante
   proveedor?: string
+  proveedores?: string[] // Múltiples proveedores o lugares de compra
   destino_sobrante?: 'CAJA' | 'REPARTO' | 'NINGUNO'
   quien_aporto_adicional?: string // participante_id
   aportes_adicionales?: AporteAdicional[]

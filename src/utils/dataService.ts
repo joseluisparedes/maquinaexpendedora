@@ -116,35 +116,61 @@ export const DataService = {
         return []
       }
 
-      return data.map((row: any) => ({
-        id: row.id,
-        codigo: row.codigo,
-        fecha: row.fecha,
-        tipo: row.tipo,
-        descripcion: row.descripcion,
-        registrado_por: row.registrado_por,
-        estado: row.estado,
-        motivo_anulacion: row.motivo_anulacion,
-        origen_movimiento_id: row.origen_movimiento_id,
-        comprobante_url: row.comprobante_url,
-        monto_ganado: row.monto_ganado ? Number(row.monto_ganado) : undefined,
-        periodo_desde: row.periodo_desde,
-        periodo_hasta: row.periodo_hasta,
-        origen_ganancia: row.origen_ganancia,
-        snapshot_porcentajes: row.snapshot_porcentajes,
-        reparto: row.reparto,
-        monto_asignado: row.monto_asignado ? Number(row.monto_asignado) : undefined,
-        monto_adicional: row.monto_adicional ? Number(row.monto_adicional) : undefined,
-        monto_sobrante: row.monto_sobrante ? Number(row.monto_sobrante) : undefined,
-        total_gastado: row.total_gastado ? Number(row.total_gastado) : undefined,
-        proveedor: row.proveedor,
-        destino_sobrante: row.destino_sobrante,
-        quien_aporto_adicional: row.quien_aporto_adicional,
-        aportes_adicionales: row.aportes_adicionales,
-        detalle_productos: row.detalle_productos,
-        movimiento_sobrante_repartido_id: row.movimiento_sobrante_repartido_id,
-        creado_el: row.creado_el,
-      })) as Movimiento[]
+      return data.map((row: any) => {
+        let comprobantesArray: string[] | undefined = undefined
+        if (row.comprobante_url) {
+          try {
+            const parsed = JSON.parse(row.comprobante_url)
+            if (Array.isArray(parsed)) {
+              comprobantesArray = parsed
+            } else if (typeof parsed === 'string') {
+              comprobantesArray = [parsed]
+            }
+          } catch {
+            comprobantesArray = [row.comprobante_url]
+          }
+        }
+
+        let proveedoresArray: string[] | undefined = undefined
+        if (row.proveedor) {
+          proveedoresArray = row.proveedor
+            .split(',')
+            .map((p: string) => p.trim())
+            .filter(Boolean)
+        }
+
+        return {
+          id: row.id,
+          codigo: row.codigo,
+          fecha: row.fecha,
+          tipo: row.tipo,
+          descripcion: row.descripcion,
+          registrado_por: row.registrado_por,
+          estado: row.estado,
+          motivo_anulacion: row.motivo_anulacion,
+          origen_movimiento_id: row.origen_movimiento_id,
+          comprobante_url: row.comprobante_url,
+          comprobantes: comprobantesArray,
+          monto_ganado: row.monto_ganado ? Number(row.monto_ganado) : undefined,
+          periodo_desde: row.periodo_desde,
+          periodo_hasta: row.periodo_hasta,
+          origen_ganancia: row.origen_ganancia,
+          snapshot_porcentajes: row.snapshot_porcentajes,
+          reparto: row.reparto,
+          monto_asignado: row.monto_asignado ? Number(row.monto_asignado) : undefined,
+          monto_adicional: row.monto_adicional ? Number(row.monto_adicional) : undefined,
+          monto_sobrante: row.monto_sobrante ? Number(row.monto_sobrante) : undefined,
+          total_gastado: row.total_gastado ? Number(row.total_gastado) : undefined,
+          proveedor: row.proveedor,
+          proveedores: proveedoresArray,
+          destino_sobrante: row.destino_sobrante,
+          quien_aporto_adicional: row.quien_aporto_adicional,
+          aportes_adicionales: row.aportes_adicionales,
+          detalle_productos: row.detalle_productos,
+          movimiento_sobrante_repartido_id: row.movimiento_sobrante_repartido_id,
+          creado_el: row.creado_el,
+        }
+      }) as Movimiento[]
     } catch {
       return StorageService.getMovimientos()
     }
@@ -157,6 +183,16 @@ export const DataService = {
 
     if (supabase && isSupabaseConfigured) {
       try {
+        const serializedComprobantes =
+          mov.comprobantes && mov.comprobantes.length > 0
+            ? JSON.stringify(mov.comprobantes)
+            : mov.comprobante_url || null
+
+        const serializedProveedor =
+          mov.proveedores && mov.proveedores.length > 0
+            ? mov.proveedores.join(', ')
+            : mov.proveedor || null
+
         await supabase.from('vending_movimientos').insert({
           id: mov.id,
           codigo: mov.codigo,
@@ -167,7 +203,7 @@ export const DataService = {
           estado: mov.estado,
           motivo_anulacion: mov.motivo_anulacion,
           origen_movimiento_id: mov.origen_movimiento_id,
-          comprobante_url: mov.comprobante_url,
+          comprobante_url: serializedComprobantes,
           monto_ganado: mov.monto_ganado,
           periodo_desde: mov.periodo_desde,
           periodo_hasta: mov.periodo_hasta,
@@ -178,7 +214,7 @@ export const DataService = {
           monto_adicional: mov.monto_adicional,
           monto_sobrante: mov.monto_sobrante,
           total_gastado: mov.total_gastado,
-          proveedor: mov.proveedor,
+          proveedor: serializedProveedor,
           destino_sobrante: mov.destino_sobrante,
           quien_aporto_adicional: mov.quien_aporto_adicional,
           aportes_adicionales: mov.aportes_adicionales,
