@@ -6,7 +6,8 @@ import {
   Calendar,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
-import { calcularBalance, formatearMoneda } from '../utils/calculations'
+import { calcularBalance, calcularReparto, formatearMoneda } from '../utils/calculations'
+import { StorageService } from '../utils/storage'
 
 interface CierrePeriodoViewProps {
   movimientos: Movimiento[]
@@ -48,45 +49,61 @@ export const CierrePeriodoView: React.FC<CierrePeriodoViewProps> = ({
 
   const balanceMes = useMemo(() => calcularBalance(movimientosDelMes), [movimientosDelMes])
 
-  // Desglose de reparto recibido en este mes por cada participante
+  // Desglose de reparto calculado sobre la Utilidad Neta del mes (Ganado - Gastado)
   const repartoPorParticipante = useMemo(() => {
-    const mapa = new Map<string, number>()
-    participantes.forEach((p) => mapa.set(p.id, 0))
+    // Si el resultado neto es <= 0, no hay utilidad neta que repartir
+    if (balanceMes.resultadoNeto <= 0) {
+      return participantes.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        rol: p.rol,
+        monto: 0,
+        porcentaje: 0,
+      }))
+    }
 
-    movimientosDelMes.forEach((mov) => {
-      if (mov.tipo === 'GANAR' && mov.reparto) {
-        mov.reparto.forEach((item) => {
-          mapa.set(item.participante_id, (mapa.get(item.participante_id) || 0) + item.monto)
-        })
+    // Obtener la configuración vigente de ganancias para el mes consultado
+    const fechaFinMes = `${anioSeleccionado}-${String(mesSeleccionado + 1).padStart(2, '0')}-28`
+    const configGanancia = StorageService.getConfiguracionVigente('ganancia', fechaFinMes)
+    const porcentajes = configGanancia?.detalles || []
+
+    const itemsCalculados = calcularReparto(balanceMes.resultadoNeto, porcentajes)
+
+    return participantes.map((p) => {
+      const item = itemsCalculados.find((r) => r.participante_id === p.id)
+      const conf = porcentajes.find((d) => d.participante_id === p.id)
+      return {
+        id: p.id,
+        nombre: p.nombre,
+        rol: p.rol,
+        monto: item ? item.monto : 0,
+        porcentaje: conf ? conf.porcentaje : 0,
       }
     })
-
-    return participantes.map((p) => ({
-      id: p.id,
-      nombre: p.nombre,
-      rol: p.rol,
-      monto: Number((mapa.get(p.id) || 0).toFixed(2)),
-    }))
-  }, [participantes, movimientosDelMes])
+  }, [participantes, balanceMes.resultadoNeto, mesSeleccionado, anioSeleccionado])
 
   // Formato de texto para WhatsApp según Sección 6.5
   const textoWhatsApp = useMemo(() => {
     const nombreMes = MESES[mesSeleccionado]
     let texto = `*📊 CIERRE: ${nombreMes.toUpperCase()} ${anioSeleccionado}*\n`
     texto += `--------------------------------\n`
-    texto += `*Ganado (Bruto):*  ${formatearMoneda(balanceMes.totalGanado)}\n`
-    texto += `*Gastado (Compras):* ${formatearMoneda(balanceMes.totalGastado)}\n`
-    texto += `*Resultado Neto:*   ${formatearMoneda(balanceMes.resultadoNeto)}\n`
+    texto += `*Ganado (Recaudación):* ${formatearMoneda(balanceMes.totalGanado)}\n`
+    texto += `*Gastado (Mercadería):*  ${formatearMoneda(balanceMes.totalGastado)}\n`
+    texto += `*Resultado Neto:*       ${formatearMoneda(balanceMes.resultadoNeto)}\n`
     texto += `--------------------------------\n`
-    texto += `*💰 REPARTO DE UTILIDADES:*\n`
 
-    repartoPorParticipante.forEach((p) => {
-      const puntos = '.'.repeat(Math.max(2, 18 - p.nombre.length))
-      texto += `  ${p.nombre} ${puntos} ${formatearMoneda(p.monto)}\n`
-    })
+    if (balanceMes.resultadoNeto > 0) {
+      texto += `*💰 REPARTO DE UTILIDADES (Sobre Neto):*\n`
+      repartoPorParticipante.forEach((p) => {
+        const puntos = '.'.repeat(Math.max(2, 16 - p.nombre.length))
+        texto += `  ${p.nombre} ${puntos} ${formatearMoneda(p.monto)} (${p.porcentaje}%)\n`
+      })
+    } else {
+      texto += `*💰 REPARTO DE UTILIDADES:* S/ 0.00 (Sin utilidad neta a repartir)\n`
+    }
 
     texto += `--------------------------------\n`
-    texto += `*🏦 SALDO EN CAJA:*  ${formatearMoneda(balanceMes.saldoCaja)}\n`
+    texto += `*🏦 SALDO EN CAJA:*      ${formatearMoneda(balanceMes.saldoCaja)}\n`
     if (balanceMes.totalAportesPendientes > 0) {
       texto += `*⚠️ Aportes Pendientes:* ${formatearMoneda(balanceMes.totalAportesPendientes)}\n`
     }
@@ -194,25 +211,46 @@ export const CierrePeriodoView: React.FC<CierrePeriodoViewProps> = ({
 
         {/* Reparto Detallado */}
         <div className="space-y-3">
-          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Reparto de Utilidades:
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Reparto de Utilidades:
+            </p>
+            {balanceMes.resultadoNeto > 0 ? (
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Sobre Utilidad Neta ({formatearMoneda(balanceMes.resultadoNeto)})
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                Sin utilidad a repartir
+              </span>
+            )}
+          </div>
+
           <div className="space-y-2 text-xs sm:text-sm font-mono border border-slate-100 rounded-2xl p-4 bg-white shadow-xs">
-            {repartoPorParticipante.map((p) => (
-              <div key={p.id} className="flex justify-between items-center py-0.5">
-                <span className="text-slate-700">
-                  {p.nombre} <span className="text-slate-400">({p.rol})</span>
-                </span>
-                <span className="font-bold text-slate-900">{formatearMoneda(p.monto)}</span>
-              </div>
-            ))}
+            {balanceMes.resultadoNeto <= 0 ? (
+              <p className="text-xs text-slate-400 italic text-center py-2 font-sans">
+                No hay utilidades a repartir en este periodo porque el Resultado Neto es {formatearMoneda(balanceMes.resultadoNeto)}.
+              </p>
+            ) : (
+              repartoPorParticipante.map((p) => (
+                <div key={p.id} className="flex justify-between items-center py-0.5">
+                  <span className="text-slate-700">
+                    {p.nombre} <span className="text-slate-400">({p.porcentaje}%)</span>
+                  </span>
+                  <span className="font-bold text-emerald-700">{formatearMoneda(p.monto)}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         {/* Saldo en Caja */}
         <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between font-mono">
-          <span className="text-xs font-bold uppercase text-slate-300">Saldo en Caja:</span>
-          <span className="text-lg font-black text-emerald-400">
+          <div>
+            <span className="text-xs font-bold uppercase text-slate-300 block">Saldo en Caja:</span>
+            <span className="text-[10px] text-slate-400 font-sans">Fondo operativo disponible para compras</span>
+          </div>
+          <span className={`text-lg font-black ${balanceMes.saldoCaja >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {formatearMoneda(balanceMes.saldoCaja)}
           </span>
         </div>

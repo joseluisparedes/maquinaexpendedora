@@ -72,11 +72,8 @@ export function calcularBalance(movimientos: Movimiento[]): BalanceMetricas {
       if (mov.origen_ganancia === 'SOBRANTE_COMPRA') {
         totalSobrantesRepartidos += ganado
       } else {
+        // Toda la recaudación ingresa a la caja como fondo operativo para compras
         saldoCaja += ganado
-        if (mov.reparto && mov.reparto.length > 0) {
-          const totalRepartido = mov.reparto.reduce((acc, r) => acc + r.monto, 0)
-          saldoCaja -= totalRepartido
-        }
       }
     } else if (mov.tipo === 'COMPRAR') {
       const asignado = mov.monto_asignado || 0
