@@ -4,7 +4,26 @@ const STORAGE_KEYS = {
   PARTICIPANTES: 'vending_finanzas_participantes_v1',
   CONFIG_REPARTO: 'vending_finanzas_config_reparto_v1',
   MOVIMIENTOS: 'vending_finanzas_movimientos_v3',
+  PROVEEDORES_FRECUENTES: 'vending_finanzas_proveedores_frecuentes_v1',
+  GLOSAS_COMPRA: 'vending_finanzas_glosas_compra_v1',
+  GLOSAS_GANAR: 'vending_finanzas_glosas_ganar_v1',
 }
+
+export const PROVEEDORES_DEFAULT = ['Makro', 'Vega', 'Metro', 'Mass', 'Mayorista']
+
+export const GLOSAS_COMPRA_DEFAULT = [
+  'Reabastecimiento general',
+  'Bebidas y gaseosas',
+  'Snacks y galletas',
+  'Golosinas',
+]
+
+export const GLOSAS_GANAR_DEFAULT = [
+  'Recaudación semanal',
+  'Corte fin de mes',
+  'Vaciado de monedero',
+  'Cierre quincenal',
+]
 
 // Limpiar versiones antiguas de caché para que no queden datos de prueba
 if (typeof window !== 'undefined') {
@@ -112,10 +131,70 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movimientos))
   },
 
+  // Métodos para Proveedores Frecuentes Configurables
+  getProveedoresFrecuentes(): string[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.PROVEEDORES_FRECUENTES)
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.PROVEEDORES_FRECUENTES, JSON.stringify(PROVEEDORES_DEFAULT))
+      return PROVEEDORES_DEFAULT
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : PROVEEDORES_DEFAULT
+    } catch {
+      return PROVEEDORES_DEFAULT
+    }
+  },
+
+  saveProveedoresFrecuentes(lista: string[]): void {
+    localStorage.setItem(STORAGE_KEYS.PROVEEDORES_FRECUENTES, JSON.stringify(lista))
+  },
+
+  // Métodos para Glosas de Compra Configurables
+  getGlosasCompraFrecuentes(): string[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.GLOSAS_COMPRA)
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.GLOSAS_COMPRA, JSON.stringify(GLOSAS_COMPRA_DEFAULT))
+      return GLOSAS_COMPRA_DEFAULT
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : GLOSAS_COMPRA_DEFAULT
+    } catch {
+      return GLOSAS_COMPRA_DEFAULT
+    }
+  },
+
+  saveGlosasCompraFrecuentes(lista: string[]): void {
+    localStorage.setItem(STORAGE_KEYS.GLOSAS_COMPRA, JSON.stringify(lista))
+  },
+
+  // Métodos para Glosas de Ganancia/Recaudación Configurables
+  getGlosasGanarFrecuentes(): string[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.GLOSAS_GANAR)
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.GLOSAS_GANAR, JSON.stringify(GLOSAS_GANAR_DEFAULT))
+      return GLOSAS_GANAR_DEFAULT
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : GLOSAS_GANAR_DEFAULT
+    } catch {
+      return GLOSAS_GANAR_DEFAULT
+    }
+  },
+
+  saveGlosasGanarFrecuentes(lista: string[]): void {
+    localStorage.setItem(STORAGE_KEYS.GLOSAS_GANAR, JSON.stringify(lista))
+  },
+
   resetData(): void {
     localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(PARTICIPANTES_INICIALES))
     localStorage.setItem(STORAGE_KEYS.CONFIG_REPARTO, JSON.stringify(CONFIG_INICIAL))
     localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
+    localStorage.setItem(STORAGE_KEYS.PROVEEDORES_FRECUENTES, JSON.stringify(PROVEEDORES_DEFAULT))
+    localStorage.setItem(STORAGE_KEYS.GLOSAS_COMPRA, JSON.stringify(GLOSAS_COMPRA_DEFAULT))
+    localStorage.setItem(STORAGE_KEYS.GLOSAS_GANAR, JSON.stringify(GLOSAS_GANAR_DEFAULT))
   },
 
   exportarBackup(): string {
@@ -123,7 +202,10 @@ export const StorageService = {
       participantes: this.getParticipantes(),
       configs: this.getConfigRepartos(),
       movimientos: this.getMovimientos(),
-      version: '1.0',
+      proveedoresFrecuentes: this.getProveedoresFrecuentes(),
+      glosasCompra: this.getGlosasCompraFrecuentes(),
+      glosasGanar: this.getGlosasGanarFrecuentes(),
+      version: '1.1',
       fecha_exportacion: new Date().toISOString(),
     }
     return JSON.stringify(data, null, 2)
@@ -135,6 +217,9 @@ export const StorageService = {
       if (Array.isArray(data.participantes)) this.saveParticipantes(data.participantes)
       if (Array.isArray(data.configs)) this.saveConfigRepartos(data.configs)
       if (Array.isArray(data.movimientos)) this.saveMovimientos(data.movimientos)
+      if (Array.isArray(data.proveedoresFrecuentes)) this.saveProveedoresFrecuentes(data.proveedoresFrecuentes)
+      if (Array.isArray(data.glosasCompra)) this.saveGlosasCompraFrecuentes(data.glosasCompra)
+      if (Array.isArray(data.glosasGanar)) this.saveGlosasGanarFrecuentes(data.glosasGanar)
       return true
     } catch (e) {
       console.error('Error importando backup', e)

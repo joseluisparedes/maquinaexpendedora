@@ -20,9 +20,16 @@ import {
   Download,
   Eye,
   Loader2,
+  Settings2,
+  RotateCcw,
 } from 'lucide-react'
 import type { Movimiento, Participante, ProductoDetalle } from '../types'
-import { StorageService } from '../utils/storage'
+import {
+  StorageService,
+  PROVEEDORES_DEFAULT,
+  GLOSAS_COMPRA_DEFAULT,
+  GLOSAS_GANAR_DEFAULT,
+} from '../utils/storage'
 import { calcularReparto, formatearMoneda } from '../utils/calculations'
 import { comprimirImagen, descargarImagen } from '../utils/imageHelper'
 
@@ -51,7 +58,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     participantes[0]?.id || ''
   )
 
-  // Sincronizar tipo cuando el modal se abre
+  // Sincronizar tipo y atajos cuando el modal se abre
   useEffect(() => {
     if (isOpen) {
       setTipo(tipoInicial)
@@ -60,6 +67,9 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
       setTextoProveedor('')
       setComprobantes([])
       setFotoEnPantallaCompleta(null)
+      setProveedoresFrecuentes(StorageService.getProveedoresFrecuentes())
+      setGlosasCompra(StorageService.getGlosasCompraFrecuentes())
+      setGlosasGanar(StorageService.getGlosasGanarFrecuentes())
     }
   }, [isOpen, tipoInicial])
 
@@ -107,6 +117,77 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [mostrarDetalleProductos, setMostrarDetalleProductos] = useState<boolean>(false)
   const [mostrarGuiaExplicativa, setMostrarGuiaExplicativa] = useState<boolean>(false)
   const [productos, setProductos] = useState<ProductoDetalle[]>([])
+
+  // Estados para Atajos y Sugerencias Configurables
+  const [proveedoresFrecuentes, setProveedoresFrecuentes] = useState<string[]>(() =>
+    StorageService.getProveedoresFrecuentes()
+  )
+  const [glosasCompra, setGlosasCompra] = useState<string[]>(() =>
+    StorageService.getGlosasCompraFrecuentes()
+  )
+  const [glosasGanar, setGlosasGanar] = useState<string[]>(() =>
+    StorageService.getGlosasGanarFrecuentes()
+  )
+  const [modalConfigAtajos, setModalConfigAtajos] = useState<
+    'PROVEEDORES' | 'GLOSAS_COMPRA' | 'GLOSAS_GANAR' | null
+  >(null)
+  const [nuevoItemAtajo, setNuevoItemAtajo] = useState<string>('')
+
+  // Métodos para gestionar atajos en vivo
+  const agregarItemAtajo = () => {
+    const limpio = nuevoItemAtajo.trim()
+    if (!limpio) return
+
+    if (modalConfigAtajos === 'PROVEEDORES') {
+      if (!proveedoresFrecuentes.includes(limpio)) {
+        const nuevos = [...proveedoresFrecuentes, limpio]
+        setProveedoresFrecuentes(nuevos)
+        StorageService.saveProveedoresFrecuentes(nuevos)
+      }
+    } else if (modalConfigAtajos === 'GLOSAS_COMPRA') {
+      if (!glosasCompra.includes(limpio)) {
+        const nuevos = [...glosasCompra, limpio]
+        setGlosasCompra(nuevos)
+        StorageService.saveGlosasCompraFrecuentes(nuevos)
+      }
+    } else if (modalConfigAtajos === 'GLOSAS_GANAR') {
+      if (!glosasGanar.includes(limpio)) {
+        const nuevos = [...glosasGanar, limpio]
+        setGlosasGanar(nuevos)
+        StorageService.saveGlosasGanarFrecuentes(nuevos)
+      }
+    }
+    setNuevoItemAtajo('')
+  }
+
+  const eliminarItemAtajo = (item: string) => {
+    if (modalConfigAtajos === 'PROVEEDORES') {
+      const nuevos = proveedoresFrecuentes.filter((p) => p !== item)
+      setProveedoresFrecuentes(nuevos)
+      StorageService.saveProveedoresFrecuentes(nuevos)
+    } else if (modalConfigAtajos === 'GLOSAS_COMPRA') {
+      const nuevos = glosasCompra.filter((g) => g !== item)
+      setGlosasCompra(nuevos)
+      StorageService.saveGlosasCompraFrecuentes(nuevos)
+    } else if (modalConfigAtajos === 'GLOSAS_GANAR') {
+      const nuevos = glosasGanar.filter((g) => g !== item)
+      setGlosasGanar(nuevos)
+      StorageService.saveGlosasGanarFrecuentes(nuevos)
+    }
+  }
+
+  const restablecerAtajoPorDefecto = () => {
+    if (modalConfigAtajos === 'PROVEEDORES') {
+      setProveedoresFrecuentes(PROVEEDORES_DEFAULT)
+      StorageService.saveProveedoresFrecuentes(PROVEEDORES_DEFAULT)
+    } else if (modalConfigAtajos === 'GLOSAS_COMPRA') {
+      setGlosasCompra(GLOSAS_COMPRA_DEFAULT)
+      StorageService.saveGlosasCompraFrecuentes(GLOSAS_COMPRA_DEFAULT)
+    } else if (modalConfigAtajos === 'GLOSAS_GANAR') {
+      setGlosasGanar(GLOSAS_GANAR_DEFAULT)
+      StorageService.saveGlosasGanarFrecuentes(GLOSAS_GANAR_DEFAULT)
+    }
+  }
 
   // Manejo de múltiples proveedores
   const agregarProveedor = (nombre: string) => {
@@ -197,9 +278,6 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     }
     return null
   }, [resultadoCompra, valorSobrante, valorAsignado])
-
-  // Proveedores comunes sugeridos
-  const proveedoresFrecuentes = ['Makro', 'Vega', 'Metro', 'Mass', 'Mayorista']
 
   // Manejo de productos en Comprar
   const agregarProducto = () => {
@@ -939,6 +1017,18 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                           </button>
                         )
                       })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalConfigAtajos('PROVEEDORES')
+                          setNuevoItemAtajo('')
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 transition-colors shrink-0 cursor-pointer border border-amber-300/80"
+                        title="Configurar y editar lugares de compra comunes"
+                      >
+                        <Settings2 className="w-3 h-3 text-amber-700" />
+                        <span>Configurar</span>
+                      </button>
                     </div>
                   </div>
 
@@ -1490,10 +1580,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                 <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
                   Rápidos:
                 </span>
-                {(tipo === 'GANAR'
-                  ? ['Recaudación semanal', 'Corte fin de mes', 'Vaciado de monedero', 'Cierre quincenal']
-                  : ['Reabastecimiento general', 'Bebidas y gaseosas', 'Snacks y galletas', 'Golosinas']
-                ).map((glosa) => (
+                {(tipo === 'GANAR' ? glosasGanar : glosasCompra).map((glosa) => (
                   <button
                     key={glosa}
                     type="button"
@@ -1503,6 +1590,18 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                     +{glosa}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalConfigAtajos(tipo === 'GANAR' ? 'GLOSAS_GANAR' : 'GLOSAS_COMPRA')
+                    setNuevoItemAtajo('')
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-700 bg-slate-200/80 hover:bg-slate-300 transition-colors shrink-0 cursor-pointer"
+                  title="Configurar y editar notas rápidas"
+                >
+                  <Settings2 className="w-3 h-3 text-slate-600" />
+                  <span>Configurar</span>
+                </button>
               </div>
             </div>
           </form>
@@ -1564,6 +1663,117 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
               alt="Comprobante ampliado"
               className="max-h-[80vh] w-auto max-w-full object-contain rounded-lg"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Personalizar Atajos Rápidos (Proveedores y Glosas) */}
+      {modalConfigAtajos && (
+        <div className="fixed inset-0 z-70 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
+                  <Settings2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    {modalConfigAtajos === 'PROVEEDORES'
+                      ? 'Personalizar Lugares / Proveedores'
+                      : modalConfigAtajos === 'GLOSAS_COMPRA'
+                      ? 'Personalizar Notas de Compra'
+                      : 'Personalizar Notas de Recaudación'}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Agrega tus propios atajos o elimina los que no uses
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalConfigAtajos(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Input para agregar nuevo ítem */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder={
+                  modalConfigAtajos === 'PROVEEDORES'
+                    ? 'Ej: Mercado Unicachi, Don Pepe...'
+                    : 'Ej: Bebidas energéticas, Reposición...'
+                }
+                value={nuevoItemAtajo}
+                onChange={(e) => setNuevoItemAtajo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    agregarItemAtajo()
+                  }
+                }}
+                className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20"
+              />
+              <button
+                type="button"
+                onClick={agregarItemAtajo}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+              >
+                + Agregar
+              </button>
+            </div>
+
+            {/* Lista actual de chips con botón de eliminación */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-600 uppercase">
+                Atajos actuales guardados:
+              </label>
+              <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-2xl border border-slate-200/80 min-h-[60px] max-h-48 overflow-y-auto">
+                {(modalConfigAtajos === 'PROVEEDORES'
+                  ? proveedoresFrecuentes
+                  : modalConfigAtajos === 'GLOSAS_COMPRA'
+                  ? glosasCompra
+                  : glosasGanar
+                ).map((item) => (
+                  <span
+                    key={item}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-slate-800 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs"
+                  >
+                    {item}
+                    <button
+                      type="button"
+                      onClick={() => eliminarItemAtajo(item)}
+                      className="text-slate-400 hover:text-rose-600 p-0.5 rounded-full cursor-pointer transition-colors"
+                      title="Eliminar este atajo"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer del diálogo de configuración */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={restablecerAtajoPorDefecto}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-indigo-600 cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restablecer iniciales</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalConfigAtajos(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
           </div>
         </div>
       )}

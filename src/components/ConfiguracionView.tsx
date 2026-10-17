@@ -13,9 +13,18 @@ import {
   Check,
   RefreshCw,
   Trash2,
+  Tag,
+  Plus,
+  X,
+  RotateCcw,
 } from 'lucide-react'
 import type { ConfigReparto, Participante } from '../types'
-import { StorageService } from '../utils/storage'
+import {
+  StorageService,
+  PROVEEDORES_DEFAULT,
+  GLOSAS_COMPRA_DEFAULT,
+  GLOSAS_GANAR_DEFAULT,
+} from '../utils/storage'
 
 interface ConfiguracionViewProps {
   configs: ConfigReparto[]
@@ -69,6 +78,84 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
 
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
   const [copiadoSQL, setCopiadoSQL] = useState(false)
+
+  // Estados para Atajos y Sugerencias Rápidas
+  const [proveedores, setProveedores] = useState<string[]>(() => StorageService.getProveedoresFrecuentes())
+  const [glosasCompra, setGlosasCompra] = useState<string[]>(() => StorageService.getGlosasCompraFrecuentes())
+  const [glosasGanar, setGlosasGanar] = useState<string[]>(() => StorageService.getGlosasGanarFrecuentes())
+
+  const [nuevoProveedor, setNuevoProveedor] = useState('')
+  const [nuevaGlosaCompra, setNuevaGlosaCompra] = useState('')
+  const [nuevaGlosaGanar, setNuevaGlosaGanar] = useState('')
+
+  const handleAgregarProveedor = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = nuevoProveedor.trim()
+    if (!trimmed) return
+    if (!proveedores.some((p) => p.toLowerCase() === trimmed.toLowerCase())) {
+      const actualizados = [...proveedores, trimmed]
+      setProveedores(actualizados)
+      StorageService.saveProveedoresFrecuentes(actualizados)
+    }
+    setNuevoProveedor('')
+  }
+
+  const handleEliminarProveedor = (item: string) => {
+    const actualizados = proveedores.filter((p) => p !== item)
+    setProveedores(actualizados)
+    StorageService.saveProveedoresFrecuentes(actualizados)
+  }
+
+  const handleRestablecerProveedores = () => {
+    setProveedores(PROVEEDORES_DEFAULT)
+    StorageService.saveProveedoresFrecuentes(PROVEEDORES_DEFAULT)
+  }
+
+  const handleAgregarGlosaCompra = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = nuevaGlosaCompra.trim()
+    if (!trimmed) return
+    if (!glosasCompra.some((g) => g.toLowerCase() === trimmed.toLowerCase())) {
+      const actualizados = [...glosasCompra, trimmed]
+      setGlosasCompra(actualizados)
+      StorageService.saveGlosasCompraFrecuentes(actualizados)
+    }
+    setNuevaGlosaCompra('')
+  }
+
+  const handleEliminarGlosaCompra = (item: string) => {
+    const actualizados = glosasCompra.filter((g) => g !== item)
+    setGlosasCompra(actualizados)
+    StorageService.saveGlosasCompraFrecuentes(actualizados)
+  }
+
+  const handleRestablecerGlosasCompra = () => {
+    setGlosasCompra(GLOSAS_COMPRA_DEFAULT)
+    StorageService.saveGlosasCompraFrecuentes(GLOSAS_COMPRA_DEFAULT)
+  }
+
+  const handleAgregarGlosaGanar = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = nuevaGlosaGanar.trim()
+    if (!trimmed) return
+    if (!glosasGanar.some((g) => g.toLowerCase() === trimmed.toLowerCase())) {
+      const actualizados = [...glosasGanar, trimmed]
+      setGlosasGanar(actualizados)
+      StorageService.saveGlosasGanarFrecuentes(actualizados)
+    }
+    setNuevaGlosaGanar('')
+  }
+
+  const handleEliminarGlosaGanar = (item: string) => {
+    const actualizados = glosasGanar.filter((g) => g !== item)
+    setGlosasGanar(actualizados)
+    StorageService.saveGlosasGanarFrecuentes(actualizados)
+  }
+
+  const handleRestablecerGlosasGanar = () => {
+    setGlosasGanar(GLOSAS_GANAR_DEFAULT)
+    StorageService.saveGlosasGanarFrecuentes(GLOSAS_GANAR_DEFAULT)
+  }
 
   // Sumas de validación
   const sumaGanancias = Number(
@@ -537,6 +624,188 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Configuración de Atajos Rápidos y Sugerencias */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Tag className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-base font-bold text-slate-900">
+              Atajos Rápidos y Sugerencias de Formulario
+            </h3>
+          </div>
+          <p className="text-xs text-slate-500">
+            Personaliza los botones de un toque que aparecen al registrar compras (lugares y notas) y ganancias (recaudaciones).
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* 1. Proveedores y Lugares de Compra */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Lugares de Compra
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRestablecerProveedores}
+                  className="text-[11px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer font-medium"
+                  title="Restablecer a valores por defecto"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Defecto
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-h-[60px] content-start">
+                {proveedores.map((p) => (
+                  <span
+                    key={p}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs"
+                  >
+                    +{p}
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarProveedor(p)}
+                      className="text-slate-400 hover:text-rose-600 cursor-pointer ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleAgregarProveedor} className="flex gap-1.5 pt-2 border-t border-slate-200/60">
+              <input
+                type="text"
+                placeholder="Nuevo lugar..."
+                value={nuevoProveedor}
+                onChange={(e) => setNuevoProveedor(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!nuevoProveedor.trim()}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+            </form>
+          </div>
+
+          {/* 2. Glosas de Compra */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Notas de Compra
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRestablecerGlosasCompra}
+                  className="text-[11px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer font-medium"
+                  title="Restablecer a valores por defecto"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Defecto
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-h-[60px] content-start">
+                {glosasCompra.map((g) => (
+                  <span
+                    key={g}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs"
+                  >
+                    +{g}
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarGlosaCompra(g)}
+                      className="text-slate-400 hover:text-rose-600 cursor-pointer ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleAgregarGlosaCompra} className="flex gap-1.5 pt-2 border-t border-slate-200/60">
+              <input
+                type="text"
+                placeholder="Nueva nota de compra..."
+                value={nuevaGlosaCompra}
+                onChange={(e) => setNuevaGlosaCompra(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!nuevaGlosaCompra.trim()}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+            </form>
+          </div>
+
+          {/* 3. Glosas de Ganancias */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Notas de Ganancia
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRestablecerGlosasGanar}
+                  className="text-[11px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer font-medium"
+                  title="Restablecer a valores por defecto"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Defecto
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-h-[60px] content-start">
+                {glosasGanar.map((g) => (
+                  <span
+                    key={g}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-2xs"
+                  >
+                    +{g}
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarGlosaGanar(g)}
+                      className="text-slate-400 hover:text-rose-600 cursor-pointer ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleAgregarGlosaGanar} className="flex gap-1.5 pt-2 border-t border-slate-200/60">
+              <input
+                type="text"
+                placeholder="Nueva nota de recaudación..."
+                value={nuevaGlosaGanar}
+                onChange={(e) => setNuevaGlosaGanar(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!nuevaGlosaGanar.trim()}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
