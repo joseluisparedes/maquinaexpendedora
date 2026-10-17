@@ -1,10 +1,43 @@
+export interface PermisosRol {
+  puede_ganar: boolean
+  puede_comprar: boolean
+  puede_foto_maquina: boolean
+  puede_ver_movimientos: boolean
+  puede_ver_cierre: boolean
+  puede_ver_dashboard: boolean
+  puede_config_reparto: boolean
+  puede_gestionar_usuarios: boolean
+}
+
+export interface RolDefinicion {
+  id: string
+  nombre: string
+  descripcion: string
+  es_sistema?: boolean
+  permisos: PermisosRol
+}
+
 export interface Participante {
   id: string
   nombre: string
-  rol: string
+  rol: string // Nombre del rol
+  rol_id?: string // Identificador del rol ('admin' | 'socio' | 'dueno_local' | 'operador' | custom)
   es_socio: boolean
   activo: boolean
+  pin?: string // PIN numérico de 4 dígitos
 }
+
+export interface FotoMaquina {
+  id: string
+  fecha: string // YYYY-MM-DD
+  hora: string // HH:mm
+  tipo: 'ANTES' | 'DESPUES' // Antes del abasto | Después del abasto
+  foto_url: string
+  observaciones?: string
+  registrado_por: string // participante id
+  creado_el: string
+}
+
 
 export interface PorcentajeDetalle {
   participante_id: string

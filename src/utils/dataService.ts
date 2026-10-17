@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { StorageService } from './storage'
-import type { ConfigReparto, Movimiento, Participante } from '../types'
+import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from '../types'
+
 
 export const DataService = {
   async getParticipantes(): Promise<Participante[]> {
@@ -298,5 +299,21 @@ export const DataService = {
         console.warn('Error borrando movimientos en Supabase', err)
       }
     }
+  },
+
+  async getRoles(): Promise<RolDefinicion[]> {
+    return StorageService.getRoles()
+  },
+
+  async saveRoles(roles: RolDefinicion[]): Promise<void> {
+    StorageService.saveRoles(roles)
+  },
+
+  async getFotosMaquina(): Promise<FotoMaquina[]> {
+    return StorageService.getFotosMaquina()
+  },
+
+  async saveFotoMaquina(foto: FotoMaquina): Promise<void> {
+    StorageService.addFotoMaquina(foto)
   },
 }
