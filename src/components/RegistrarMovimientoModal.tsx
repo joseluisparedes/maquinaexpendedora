@@ -3,7 +3,6 @@ import {
   X,
   TrendingUp,
   ShoppingBag,
-  Calculator,
   Plus,
   Trash2,
   CheckCircle2,
@@ -14,6 +13,8 @@ import {
   Store,
   ChevronDown,
   ChevronUp,
+  Calendar,
+  Sparkles,
 } from 'lucide-react'
 import type { Movimiento, Participante, ProductoDetalle } from '../types'
 import { StorageService } from '../utils/storage'
@@ -56,6 +57,26 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [montoGanado, setMontoGanado] = useState<number | ''>('')
   const [periodoDesde, setPeriodoDesde] = useState<string>('')
   const [periodoHasta, setPeriodoHasta] = useState<string>('')
+  const [mostrarGuiaGanar, setMostrarGuiaGanar] = useState<boolean>(false)
+  const [mostrarPeriodoGanar, setMostrarPeriodoGanar] = useState<boolean>(false)
+
+  // Helpers para periodos rápidos en GANAR
+  const setPeriodoUltimosDias = (dias: number) => {
+    const hoy = new Date()
+    const pasado = new Date()
+    pasado.setDate(hoy.getDate() - dias)
+    setPeriodoDesde(pasado.toISOString().slice(0, 10))
+    setPeriodoHasta(hoy.toISOString().slice(0, 10))
+    setMostrarPeriodoGanar(true)
+  }
+
+  const setPeriodoMesActual = () => {
+    const hoy = new Date()
+    const primero = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+    setPeriodoDesde(primero.toISOString().slice(0, 10))
+    setPeriodoHasta(hoy.toISOString().slice(0, 10))
+    setMostrarPeriodoGanar(true)
+  }
 
   // Estado para COMPRAR
   const [montoAsignado, setMontoAsignado] = useState<number | ''>('')
@@ -894,18 +915,59 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
             )}
 
             {/* ======================================================== */}
-            {/* SECCIÓN GANAR (RECAUDACIÓN) */}
+            {/* SECCIÓN GANAR (RECAUDACIÓN) - CLARA, PASO A PASO Y MÓVIL */}
             {/* ======================================================== */}
             {tipo === 'GANAR' && (
               <div className="space-y-4">
+                {/* Botón de ayuda desplegable */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGuiaGanar(!mostrarGuiaGanar)}
+                    className="w-full flex items-center justify-between text-left text-xs font-bold text-emerald-950 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4 text-emerald-700" />
+                      ¿Cómo funciona el registro de recaudación?
+                    </span>
+                    {mostrarGuiaGanar ? (
+                      <ChevronUp className="w-4 h-4 text-emerald-700" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-emerald-700" />
+                    )}
+                  </button>
+                  {mostrarGuiaGanar && (
+                    <div className="mt-2 text-[11px] text-emerald-950/90 space-y-1.5 border-t border-emerald-200/60 pt-2 leading-relaxed">
+                      <p>
+                        <strong>1. Efectivo Recaudado:</strong> Cuenta todas las monedas y billetes retirados del monedero/billetero de la máquina.
+                      </p>
+                      <p>
+                        <strong>2. Reparto Oficial:</strong> El sistema divide el 100% de la ganancia según las reglas vigentes (José Luis 40%, Marlon 30%, Jesús 30%).
+                      </p>
+                      <p>
+                        <strong>3. Auditoría Segura:</strong> Al guardar, se genera una copia histórica (snapshot) para que los porcentajes nunca se alteren en el futuro.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* PASO 1: Dinero Recaudado */}
                 <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-emerald-500 transition-colors shadow-2xs">
-                  <label className="block text-xs font-black text-slate-800 uppercase mb-1">
-                    Monto Ganado (Recaudación Retirada S/) *
-                  </label>
-                  <p className="text-[11px] text-slate-500 mb-2">
-                    Efectivo total retirado de la máquina expendedora para ser repartido.
-                  </p>
-                  <div className="relative">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div>
+                      <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black">
+                          1
+                        </span>
+                        ¿Cuánto dinero recaudaste de la máquina? *
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Total en efectivo (monedas y billetes) retirado de la máquina para repartir.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-2">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
                       S/
                     </span>
@@ -922,98 +984,258 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/70">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                      Periodo Desde (Opcional)
-                    </label>
-                    <input
-                      type="date"
-                      value={periodoDesde}
-                      onChange={(e) => setPeriodoDesde(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                      Periodo Hasta (Opcional)
-                    </label>
-                    <input
-                      type="date"
-                      value={periodoHasta}
-                      onChange={(e) => setPeriodoHasta(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
-                    />
-                  </div>
-                </div>
-
-                {/* Previsualización en Vivo del Reparto */}
-                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 shadow-2xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
-                      <Calculator className="w-4 h-4 text-emerald-700" />
-                      Reparto Automático Según % Vigentes
-                    </div>
-                    <span className="text-xs text-emerald-800 font-extrabold">
-                      Total: {formatearMoneda(typeof montoGanado === 'number' ? montoGanado : 0)}
+                  {/* Atajos de montos comunes para recaudación en celular */}
+                  <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
+                      Sugeridos:
                     </span>
+                    {[100, 200, 300, 400, 500, 800, 1000].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMontoGanado(m)}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[11px] font-bold text-slate-600 hover:text-emerald-800 transition-colors shrink-0 cursor-pointer"
+                      >
+                        S/ {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PASO 2: Periodo de Recaudación (Opcional & Desplegable en Celular) */}
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      Periodo de la Recaudación (Opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPeriodoGanar(!mostrarPeriodoGanar)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer flex items-center gap-0.5"
+                    >
+                      {mostrarPeriodoGanar ? 'Ocultar fechas' : 'Elegir fechas'}
+                      {mostrarPeriodoGanar ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
 
-                  {repartoCalculado.length > 0 ? (
-                    <div className="space-y-1.5 text-xs">
-                      {repartoCalculado.map((rep, idx) => {
-                        const part = participantes.find((p) => p.id === rep.participante_id)
-                        const esUltimo = idx === repartoCalculado.length - 1
+                  {/* Botones rápidos de periodo */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setPeriodoUltimosDias(7)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[11px] font-semibold text-emerald-800 transition-colors shrink-0 cursor-pointer border border-emerald-200/60"
+                    >
+                      Últimos 7 días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPeriodoUltimosDias(15)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[11px] font-semibold text-emerald-800 transition-colors shrink-0 cursor-pointer border border-emerald-200/60"
+                    >
+                      Últimos 15 días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={setPeriodoMesActual}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[11px] font-semibold text-emerald-800 transition-colors shrink-0 cursor-pointer border border-emerald-200/60"
+                    >
+                      Este mes
+                    </button>
+                    {(periodoDesde || periodoHasta) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPeriodoDesde('')
+                          setPeriodoHasta('')
+                        }}
+                        className="px-2 py-1 text-[10px] text-slate-400 hover:text-rose-600 font-semibold cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+
+                  {mostrarPeriodoGanar && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 animate-in fade-in duration-150">
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                          Desde:
+                        </span>
+                        <input
+                          type="date"
+                          value={periodoDesde}
+                          onChange={(e) => setPeriodoDesde(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                          Hasta:
+                        </span>
+                        <input
+                          type="date"
+                          value={periodoHasta}
+                          onChange={(e) => setPeriodoHasta(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* PASO 3: TARJETA DE DISTRIBUCIÓN DE GANANCIAS EN VIVO */}
+                <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-4 shadow-md space-y-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <span className="text-xs uppercase font-extrabold tracking-wider text-slate-200 block">
+                          Reparto de Ganancias en Vivo
+                        </span>
+                        <span className="text-[10px] text-emerald-300 font-medium">
+                          Según porcentajes vigentes aprobados
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                        Total a Repartir
+                      </span>
+                      <span className="text-base sm:text-lg font-black text-emerald-400">
+                        {formatearMoneda(typeof montoGanado === 'number' ? montoGanado : 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lista de Socios y Reparto */}
+                  <div className="space-y-2">
+                    {configGanancia && configGanancia.detalles.length > 0 ? (
+                      configGanancia.detalles.map((det) => {
+                        const part = participantes.find((p) => p.id === det.participante_id)
+                        const repItem = repartoCalculado.find((r) => r.participante_id === det.participante_id)
+                        const montoAsignadoSocio = repItem ? repItem.monto : 0
+                        const tienePorcentaje = det.porcentaje > 0
+
                         return (
                           <div
-                            key={rep.participante_id}
-                            className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white border border-emerald-100 shadow-2xs"
+                            key={det.participante_id}
+                            className={`p-2.5 rounded-xl border transition-all ${
+                              tienePorcentaje
+                                ? 'bg-white/10 border-white/15'
+                                : 'bg-white/5 border-white/5 opacity-60'
+                            }`}
                           >
-                            <span className="font-bold text-slate-800">
-                              {part?.nombre} ({rep.porcentaje_aplicado}%)
-                              {esUltimo && (
-                                <span className="ml-1 text-[10px] text-emerald-600 font-normal">
-                                  *ajuste centavos
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center font-black text-xs">
+                                  {part?.nombre.charAt(0) || 'P'}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-xs text-white">
+                                      {part?.nombre}
+                                    </span>
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                                      {det.porcentaje}%
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400">{part?.rol}</p>
+                                </div>
+                              </div>
+
+                              <div className="text-right">
+                                <span className="font-black text-sm text-emerald-400">
+                                  {formatearMoneda(montoAsignadoSocio)}
                                 </span>
-                              )}
-                            </span>
-                            <span className="font-black text-emerald-800 text-sm">
-                              {formatearMoneda(rep.monto)}
-                            </span>
+                              </div>
+                            </div>
+
+                            {/* Barra de Proporción Visual */}
+                            {tienePorcentaje && (
+                              <div className="mt-2 w-full bg-black/30 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-emerald-400 h-full rounded-full transition-all duration-300"
+                                  style={{ width: `${det.porcentaje}%` }}
+                                />
+                              </div>
+                            )}
                           </div>
                         )
-                      })}
-                      <p className="text-[10px] text-emerald-700 italic pt-1">
-                        *El sistema guarda una foto inmutable (snapshot) de estos porcentajes para auditoría.
+                      })
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">
+                        No hay porcentajes configurados para esta fecha.
                       </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-emerald-700 italic">
-                      Ingresa el monto ganado para ver el cálculo del reparto en vivo.
-                    </p>
-                  )}
+                    )}
+                  </div>
+
+                  {/* Explicación en lenguaje humano ("En palabras sencillas") */}
+                  <div className="bg-white/10 p-3 rounded-xl text-xs text-slate-200 leading-relaxed border border-white/10">
+                    <p className="font-bold text-emerald-300 mb-0.5">💡 En palabras sencillas:</p>
+                    {typeof montoGanado === 'number' && montoGanado > 0 ? (
+                      <p>
+                        De los <strong>{formatearMoneda(montoGanado)}</strong> retirados de la máquina:
+                        {repartoCalculado
+                          .filter((r) => r.monto > 0)
+                          .map((r) => {
+                            const socio = participantes.find((p) => p.id === r.participante_id)
+                            return ` ${socio?.nombre} recibe ${formatearMoneda(r.monto)} (${r.porcentaje_aplicado}%)`
+                          })
+                          .join(', ')}
+                        . Se aplicó redondeo exacto de centavos.
+                      </p>
+                    ) : (
+                      <p className="text-slate-300">
+                        Escribe el dinero recaudado o toca un botón sugerido arriba para ver la división exacta en soles que le toca a cada socio.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Descripción general */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+            {/* Descripción general con atajos rápidos */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase">
                 Nota / Glosa Opcional
               </label>
               <input
                 type="text"
                 placeholder={
                   tipo === 'GANAR'
-                    ? 'Ej: Recaudación semana 1, monedas retiradas'
+                    ? 'Ej: Recaudación fin de semana, monedas retiradas'
                     : 'Ej: Galletas Oreo, Coca Cola, reabastecimiento general'
                 }
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium"
               />
+
+              {/* Chips de notas rápidas para celular */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
+                  Rápidos:
+                </span>
+                {(tipo === 'GANAR'
+                  ? ['Recaudación semanal', 'Corte fin de mes', 'Vaciado de monedero', 'Cierre quincenal']
+                  : ['Reabastecimiento general', 'Bebidas y gaseosas', 'Snacks y galletas', 'Golosinas']
+                ).map((glosa) => (
+                  <button
+                    key={glosa}
+                    type="button"
+                    onClick={() => setDescripcion(glosa)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-600 transition-colors shrink-0 cursor-pointer"
+                  >
+                    +{glosa}
+                  </button>
+                ))}
+              </div>
             </div>
           </form>
         </div>
