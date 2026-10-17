@@ -10,6 +10,8 @@ import {
   Eye,
   Download,
   AlertTriangle,
+  Check,
+  Undo2,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -19,12 +21,14 @@ interface DetalleMovimientoModalProps {
   movimiento: Movimiento | null
   onClose: () => void
   participantes: Participante[]
+  onCambiarEstadoAporte?: (movId: string, nuevoEstado: 'DEVUELTO' | 'PENDIENTE') => Promise<void>
 }
 
 export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
   movimiento,
   onClose,
   participantes,
+  onCambiarEstadoAporte,
 }) => {
   const [fotoEnPantallaCompleta, setFotoEnPantallaCompleta] = useState<string | null>(null)
 
@@ -184,21 +188,72 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
           {/* Desglose COMPRAR */}
           {!esGanar && (
             <div className="space-y-3">
-              {(movimiento.monto_adicional || 0) > 0 && (
-                <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex items-start gap-3 text-amber-950 shadow-xs">
-                  <div className="w-8 h-8 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                    <AlertTriangle className="w-5 h-5 text-amber-700" />
+              {(movimiento.monto_adicional || 0) > 0 && (() => {
+                const estaDevuelto = Boolean(
+                  movimiento.aporte_devuelto ||
+                  (movimiento.aportes_adicionales && movimiento.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
+                )
+                const socioNombre = partMap.get(movimiento.quien_aporto_adicional || '')?.nombre || 'Socio'
+
+                if (estaDevuelto) {
+                  return (
+                    <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-emerald-950 shadow-xs">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-emerald-900">
+                            ✓ Faltante de dinero devuelto (+{formatearMoneda(movimiento.monto_adicional || 0)})
+                          </p>
+                          <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                            El aporte personal de <strong className="text-emerald-950 font-black">{socioNombre}</strong> ya fue reembolsado
+                            {movimiento.fecha_devolucion_aporte ? ` el ${movimiento.fecha_devolucion_aporte}` : ''}.
+                          </p>
+                        </div>
+                      </div>
+                      {onCambiarEstadoAporte && (
+                        <button
+                          onClick={() => onCambiarEstadoAporte(movimiento.id, 'PENDIENTE')}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 bg-white border border-slate-200 rounded-xl hover:bg-rose-50 transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
+                          title="Volver a marcar como deuda pendiente"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                          <span>Deshacer</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-xs">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <AlertTriangle className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-wide text-amber-900">
+                          ⚠️ Faltó dinero en caja (+{formatearMoneda(movimiento.monto_adicional || 0)}) — Pendiente
+                        </p>
+                        <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                          El socio <strong className="text-amber-950 font-black">{socioNombre}</strong> cubrió este faltante de su propio bolsillo. Gasto total de la compra: <strong className="font-black text-slate-900">{formatearMoneda(movimiento.total_gastado || 0)}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    {onCambiarEstadoAporte && (
+                      <button
+                        onClick={() => onCambiarEstadoAporte(movimiento.id, 'DEVUELTO')}
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all shrink-0 cursor-pointer active:scale-95 self-start sm:self-auto"
+                        title="Registrar que ya se le devolvió el dinero al socio"
+                      >
+                        <Check className="w-4 h-4 stroke-[2.5]" />
+                        <span>Marcar Devuelto</span>
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wide text-amber-900">
-                      ⚠️ Faltó dinero en caja (+{formatearMoneda(movimiento.monto_adicional || 0)})
-                    </p>
-                    <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                      El socio <strong className="text-amber-950 font-black">{partMap.get(movimiento.quien_aporto_adicional || '')?.nombre || 'Socio'}</strong> cubrió este faltante de su propio bolsillo. El gasto total de la compra fue de <strong className="font-black text-slate-900">{formatearMoneda(movimiento.total_gastado || 0)}</strong>.
-                    </p>
-                  </div>
-                </div>
-              )}
+                )
+              })()}
 
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs">
                 <div className="flex justify-between">

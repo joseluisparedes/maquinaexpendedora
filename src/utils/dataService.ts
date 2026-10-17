@@ -344,6 +344,16 @@ export const DataService = {
 
     if (supabase && isSupabaseConfigured) {
       try {
+        const serializedComprobantes =
+          actualizado.comprobantes && actualizado.comprobantes.length > 0
+            ? JSON.stringify(actualizado.comprobantes)
+            : actualizado.comprobante_url || null
+
+        const serializedProveedor =
+          actualizado.proveedores && actualizado.proveedores.length > 0
+            ? actualizado.proveedores.join(', ')
+            : actualizado.proveedor || null
+
         await supabase
           .from('vending_movimientos')
           .update({
@@ -354,11 +364,12 @@ export const DataService = {
             monto_adicional: actualizado.monto_adicional,
             monto_sobrante: actualizado.monto_sobrante,
             total_gastado: actualizado.total_gastado,
-            proveedor: actualizado.proveedor,
+            proveedor: serializedProveedor,
             destino_sobrante: actualizado.destino_sobrante,
             quien_aporto_adicional: actualizado.quien_aporto_adicional,
+            aportes_adicionales: actualizado.aportes_adicionales,
             registrado_por: actualizado.registrado_por,
-            comprobantes: actualizado.comprobantes,
+            comprobante_url: serializedComprobantes,
           })
           .eq('id', actualizado.id)
       } catch (err) {

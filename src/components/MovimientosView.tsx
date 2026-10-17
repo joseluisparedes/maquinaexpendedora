@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   Edit2,
   AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -303,17 +304,38 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
                             <div className="text-[10px] text-slate-500">
                               Asignado caja: {formatearMoneda(mov.monto_asignado || 0)}
                             </div>
-                            {(mov.monto_adicional || 0) > 0 && (
-                              <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
-                                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-                                <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
-                                {mov.quien_aporto_adicional && (
-                                  <span className="text-amber-800 font-bold">
-                                    ({participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional})
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                            {(mov.monto_adicional || 0) > 0 && (() => {
+                              const estaDevuelto = Boolean(
+                                mov.aporte_devuelto ||
+                                (mov.aportes_adicionales && mov.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
+                              )
+                              const nombreSocio = mov.quien_aporto_adicional
+                                ? participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional
+                                : 'Socio'
+
+                              return (
+                                <div
+                                  className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border shadow-2xs ${
+                                    estaDevuelto
+                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                      : 'bg-amber-100 text-amber-900 border-amber-300'
+                                  }`}
+                                >
+                                  {estaDevuelto ? (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      <span>Devuelto: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                      <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                                    </>
+                                  )}
+                                  <span className="font-bold opacity-80">({nombreSocio})</span>
+                                </div>
+                              )
+                            })()}
                             {(mov.monto_sobrante || 0) > 0 && (
                               <div className="text-[10px] text-emerald-600 font-medium">
                                 Sobró: −{formatearMoneda(mov.monto_sobrante || 0)} ({mov.destino_sobrante})

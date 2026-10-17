@@ -8,6 +8,11 @@ import {
   RotateCcw,
   Clock,
   Sparkles,
+  CheckCircle2,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Undo2,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { calcularBalance, formatearMoneda } from '../utils/calculations'
@@ -18,6 +23,7 @@ interface DetalleCajaModalProps {
   movimientos: Movimiento[]
   participantes: Participante[]
   onVerDetalleMovimiento?: (mov: Movimiento) => void
+  onCambiarEstadoAporte?: (movimientoId: string, nuevoEstado: 'DEVUELTO' | 'PENDIENTE') => Promise<void>
 }
 
 interface ItemFlujoCaja {
@@ -33,14 +39,29 @@ interface ItemFlujoCaja {
   notaExtra?: string
 }
 
+interface AporteDetalleItem {
+  movimientoId: string
+  codigo: string
+  fecha: string
+  socioId: string
+  socioNombre: string
+  monto: number
+  estado: 'PENDIENTE' | 'DEVUELTO'
+  fecha_devolucion?: string
+  devuelto_por?: string
+}
+
 export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
   isOpen,
   onClose,
   movimientos,
   participantes,
   onVerDetalleMovimiento,
+  onCambiarEstadoAporte,
 }) => {
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ENTRADAS' | 'SALIDAS'>('TODOS')
+  const [mostrarHistorialDevueltos, setMostrarHistorialDevueltos] = useState(false)
+  const [procesandoAporteId, setProcesandoAporteId] = useState<string | null>(null)
 
   const partMap = useMemo(() => {
     const map = new Map<string, Participante>()
@@ -50,8 +71,8 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
 
   const balance = useMemo(() => calcularBalance(movimientos), [movimientos])
 
-  // Desglose cronológico con saldo acumulado (Kardex de Caja)
-  const { flujoCompleto, totalEntradas, totalSalidas, listaAportesPendientes } = useMemo(() => {
+  // Desglose cronológico con saldo acumulado (Kardex de Caja) y Aportes
+  const { flujoCompleto, totalEntradas, totalSalidas, aportesPendientes, aportesDevueltos } = useMemo(() => {
     const activos = movimientos
       .filter((m) => m.estado === 'REGISTRADO')
       .slice()
@@ -70,6 +91,8 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
     let salidas = 0
 
     const items: ItemFlujoCaja[] = []
+    const pendientesList: AporteDetalleItem[] = []
+    const devueltosList: AporteDetalleItem[] = []
 
     for (const mov of activos) {
       const regPor = partMap.get(mov.registrado_por)?.nombre || mov.registrado_por
@@ -120,7 +143,55 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
           // Afectación total de la compra (ej: 210 asignado + 40 extra = 250 gastado real)
           impactoCaja = gastadoReal
           const nombreAporto = partMap.get(mov.quien_aporto_adicional || '')?.nombre || 'Socio'
-          nota = `Faltó dinero: +${formatearMoneda(adicional)} puesto por ${nombreAporto}`
+          
+          // Verificar si ya fue devuelto
+          const estaDevuelto = Boolean(
+            mov.aporte_devuelto ||
+            (mov.aportes_adicionales && mov.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
+          )
+
+          nota = estaDevuelto
+            ? `Faltó: +${formatearMoneda(adicional)} (Devuelto a ${nombreAporto})`
+            : `Faltó dinero: +${formatearMoneda(adicional)} puesto por ${nombreAporto}`
+
+          // Clasificar para la lista de aportes
+          if (mov.aportes_adicionales && mov.aportes_adicionales.length > 0) {
+            mov.aportes_adicionales.forEach((ap) => {
+              const item: AporteDetalleItem = {
+                movimientoId: mov.id,
+                codigo: mov.codigo,
+                fecha: mov.fecha,
+                socioId: ap.participante_id,
+                socioNombre: partMap.get(ap.participante_id)?.nombre || ap.participante_id,
+                monto: ap.monto,
+                estado: ap.estado,
+                fecha_devolucion: ap.fecha_devolucion,
+                devuelto_por: ap.devuelto_por,
+              }
+              if (ap.estado === 'DEVUELTO') {
+                devueltosList.push(item)
+              } else {
+                pendientesList.push(item)
+              }
+            })
+          } else {
+            const item: AporteDetalleItem = {
+              movimientoId: mov.id,
+              codigo: mov.codigo,
+              fecha: mov.fecha,
+              socioId: mov.quien_aporto_adicional || 'Desconocido',
+              socioNombre: nombreAporto,
+              monto: adicional,
+              estado: estaDevuelto ? 'DEVUELTO' : 'PENDIENTE',
+              fecha_devolucion: mov.fecha_devolucion_aporte,
+              devuelto_por: mov.devuelto_por,
+            }
+            if (estaDevuelto) {
+              devueltosList.push(item)
+            } else {
+              pendientesList.push(item)
+            }
+          }
         } else {
           impactoCaja = asignado
           if (mov.destino_sobrante === 'CAJA' && sobrante > 0) {
@@ -147,28 +218,12 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
       }
     }
 
-    // Calcular aportes adicionales pendientes agrupados por socio
-    const aportesPorSocio = new Map<string, number>()
-    activos.forEach((m) => {
-      if (m.tipo === 'COMPRAR' && (m.monto_adicional || 0) > 0) {
-        const idSocio = m.quien_aporto_adicional || 'Desconocido'
-        const act = aportesPorSocio.get(idSocio) || 0
-        aportesPorSocio.set(idSocio, act + (m.monto_adicional || 0))
-      }
-    })
-
-    const listaAportes = Array.from(aportesPorSocio.entries()).map(([id, total]) => ({
-      socioId: id,
-      socioNombre: partMap.get(id)?.nombre || id,
-      total,
-    }))
-
-    // Invertir para mostrar los más recientes arriba pero con el saldo correspondiente
     return {
       flujoCompleto: items.reverse(),
       totalEntradas: entradas,
       totalSalidas: salidas,
-      listaAportesPendientes: listaAportes,
+      aportesPendientes: pendientesList,
+      aportesDevueltos: devueltosList,
     }
   }, [movimientos, partMap])
 
@@ -181,6 +236,40 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
     }
     return flujoCompleto
   }, [flujoCompleto, filtroTipo])
+
+  const handleMarcarDevuelto = async (ap: AporteDetalleItem) => {
+    if (
+      window.confirm(
+        `¿Confirmar que ya se le devolvió / reembolsó ${formatearMoneda(ap.monto)} al socio ${ap.socioNombre} por el movimiento ${ap.codigo}?`
+      )
+    ) {
+      if (onCambiarEstadoAporte) {
+        setProcesandoAporteId(ap.movimientoId)
+        try {
+          await onCambiarEstadoAporte(ap.movimientoId, 'DEVUELTO')
+        } finally {
+          setProcesandoAporteId(null)
+        }
+      }
+    }
+  }
+
+  const handleRevertirDevuelto = async (ap: AporteDetalleItem) => {
+    if (
+      window.confirm(
+        `¿Deseas revertir este reembolso de ${formatearMoneda(ap.monto)} a ${ap.socioNombre} y volver a marcarlo como PENDIENTE?`
+      )
+    ) {
+      if (onCambiarEstadoAporte) {
+        setProcesandoAporteId(ap.movimientoId)
+        try {
+          await onCambiarEstadoAporte(ap.movimientoId, 'PENDIENTE')
+        } finally {
+          setProcesandoAporteId(null)
+        }
+      }
+    }
+  }
 
   if (!isOpen) return null
 
@@ -254,34 +343,115 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
             </div>
           </div>
 
-          {/* Alerta de Aportes Pendientes si algún socio puso de su dinero */}
-          {listaAportesPendientes.length > 0 && (
-            <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl space-y-2 text-amber-950 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-xs font-black uppercase tracking-wide text-amber-900">
-                  Aportes Pendientes por Devolver a Socios
+          {/* Sección de Aportes de Socios */}
+          {aportesPendientes.length > 0 ? (
+            <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-3xl space-y-3 text-amber-950 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="text-xs font-black uppercase tracking-wide text-amber-900">
+                    Aportes Pendientes por Devolver a Socios ({aportesPendientes.length})
+                  </span>
+                </div>
+                <span className="text-xs font-black text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                  Total por devolver: +{formatearMoneda(aportesPendientes.reduce((acc, a) => acc + a.monto, 0))}
                 </span>
               </div>
               <p className="text-xs text-amber-800 leading-relaxed">
-                Cuando no hubo suficiente saldo en caja, los siguientes socios cubrieron el faltante con su dinero personal:
+                Cuando no hubo suficiente saldo en caja, los siguientes socios cubrieron el faltante con su dinero personal. Toca <strong>«Marcar Devuelto»</strong> en cuanto se le entregue su reembolso:
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {listaAportesPendientes.map((ap) => (
+
+              <div className="space-y-2 pt-1">
+                {aportesPendientes.map((ap) => (
                   <div
-                    key={ap.socioId}
-                    className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-amber-200 text-xs shadow-2xs"
+                    key={`${ap.movimientoId}-${ap.socioId}`}
+                    className="p-3 bg-white rounded-2xl border border-amber-200 text-xs shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                   >
-                    <span className="font-bold text-slate-800">{ap.socioNombre}</span>
-                    <span className="font-black text-amber-800">
-                      +{formatearMoneda(ap.total)}
-                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-900 text-sm">{ap.socioNombre}</span>
+                        <span className="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg text-xs">
+                          +{formatearMoneda(ap.monto)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Faltante en compra <strong className="font-mono text-slate-700">{ap.codigo}</strong> • {ap.fecha}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleMarcarDevuelto(ap)}
+                      disabled={procesandoAporteId === ap.movimientoId}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+                      title="Registrar que ya se le devolvió el dinero al socio"
+                    >
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                      <span>Marcar Devuelto</span>
+                    </button>
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-amber-700 italic">
-                * Este dinero debe ser reembolsado al socio en el próximo arqueo o reparto de utilidades.
-              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-bold">
+                  No hay aportes pendientes por devolver. Todos los socios están al día.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Historial de Aportes Ya Devueltos si existen */}
+          {aportesDevueltos.length > 0 && (
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-2">
+              <button
+                onClick={() => setMostrarHistorialDevueltos(!mostrarHistorialDevueltos)}
+                className="w-full flex items-center justify-between text-slate-700 font-bold cursor-pointer hover:text-slate-900"
+              >
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Historial de Aportes Devueltos / Reembolsados ({aportesDevueltos.length})
+                </span>
+                {mostrarHistorialDevueltos ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              {mostrarHistorialDevueltos && (
+                <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                  {aportesDevueltos.map((ap) => (
+                    <div
+                      key={`dev-${ap.movimientoId}-${ap.socioId}`}
+                      className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-100 text-xs shadow-2xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-800">{ap.socioNombre}</span>
+                          <span className="text-emerald-700 font-extrabold">+{formatearMoneda(ap.monto)}</span>
+                          <span className="text-slate-400 font-mono">({ap.codigo})</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          ✓ Reembolsado {ap.fecha_devolucion ? `el ${ap.fecha_devolucion}` : 'satisfactoriamente'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleRevertirDevuelto(ap)}
+                        disabled={procesandoAporteId === ap.movimientoId}
+                        className="text-slate-400 hover:text-rose-600 flex items-center gap-1 font-bold px-2 py-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-[11px]"
+                        title="Deshacer y volver a marcar como deuda pendiente"
+                      >
+                        <Undo2 className="w-3.5 h-3.5" />
+                        <span>Deshacer</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

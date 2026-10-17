@@ -98,13 +98,13 @@ export function calcularBalance(movimientos: Movimiento[]): BalanceMetricas {
         totalSobrantesCaja += sobrante
       }
 
-      if (mov.aportes_adicionales) {
+      if (mov.aportes_adicionales && mov.aportes_adicionales.length > 0) {
         for (const ap of mov.aportes_adicionales) {
           if (ap.estado === 'PENDIENTE') {
             totalAportesPendientes += ap.monto
           }
         }
-      } else if (adicional > 0) {
+      } else if (adicional > 0 && !mov.aporte_devuelto) {
         totalAportesPendientes += adicional
       }
     }

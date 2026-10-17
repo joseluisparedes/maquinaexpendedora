@@ -182,6 +182,54 @@ export function App() {
     )
   }
 
+  // Cambiar estado de aporte adicional (DEVUELTO o PENDIENTE)
+  const handleCambiarEstadoAporte = async (
+    movimientoId: string,
+    nuevoEstado: 'DEVUELTO' | 'PENDIENTE'
+  ) => {
+    const mov = movimientos.find((m) => m.id === movimientoId)
+    if (!mov) return
+
+    const hoy = new Date().toISOString().split('T')[0]
+    let nuevosAportes = mov.aportes_adicionales ? [...mov.aportes_adicionales] : []
+
+    if (nuevosAportes.length === 0 && (mov.monto_adicional || 0) > 0) {
+      nuevosAportes = [
+        {
+          id: `ap-${mov.id}`,
+          participante_id: mov.quien_aporto_adicional || usuarioActual?.id || '',
+          monto: mov.monto_adicional || 0,
+          estado: nuevoEstado,
+          fecha_devolucion: nuevoEstado === 'DEVUELTO' ? hoy : undefined,
+          devuelto_por: nuevoEstado === 'DEVUELTO' ? usuarioActual?.nombre : undefined,
+        },
+      ]
+    } else {
+      nuevosAportes = nuevosAportes.map((ap) => ({
+        ...ap,
+        estado: nuevoEstado,
+        fecha_devolucion: nuevoEstado === 'DEVUELTO' ? hoy : undefined,
+        devuelto_por: nuevoEstado === 'DEVUELTO' ? usuarioActual?.nombre : undefined,
+      }))
+    }
+
+    const actualizado: Movimiento = {
+      ...mov,
+      aportes_adicionales: nuevosAportes,
+      aporte_devuelto: nuevoEstado === 'DEVUELTO',
+      fecha_devolucion_aporte: nuevoEstado === 'DEVUELTO' ? hoy : undefined,
+      devuelto_por: nuevoEstado === 'DEVUELTO' ? usuarioActual?.nombre : undefined,
+    }
+
+    await DataService.updateMovimiento(actualizado)
+    setMovimientos((prev) =>
+      prev.map((m) => (m.id === actualizado.id ? actualizado : m))
+    )
+    if (detalleMov && detalleMov.id === movimientoId) {
+      setDetalleMov(actualizado)
+    }
+  }
+
   // Guardar nueva foto de la máquina
   const handleFotoGuardada = async (foto: FotoMaquina) => {
     await DataService.saveFotoMaquina(foto)
@@ -418,6 +466,7 @@ export function App() {
         movimiento={detalleMov}
         onClose={() => setDetalleMov(null)}
         participantes={participantes}
+        onCambiarEstadoAporte={handleCambiarEstadoAporte}
       />
 
       <AnularMovimientoModal
@@ -457,6 +506,7 @@ export function App() {
         onClose={() => setModalCajaAbierto(false)}
         movimientos={movimientos}
         participantes={participantes}
+        onCambiarEstadoAporte={handleCambiarEstadoAporte}
         onVerDetalleMovimiento={(m) => {
           setModalCajaAbierto(false)
           setDetalleMov(m)
