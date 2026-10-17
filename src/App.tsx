@@ -14,6 +14,7 @@ import { RegistrarFotoModal } from './components/RegistrarFotoModal'
 import { GaleriaFotosModal } from './components/GaleriaFotosModal'
 import { EditarMovimientoModal } from './components/EditarMovimientoModal'
 import { DetalleCajaModal } from './components/DetalleCajaModal'
+import { ModalDevolucionAportes } from './components/ModalDevolucionAportes'
 import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from './types'
 import { StorageService } from './utils/storage'
 import { DataService } from './utils/dataService'
@@ -62,11 +63,34 @@ export function App() {
   const [modalGaleriaAbierto, setModalGaleriaAbierto] = useState(false)
   const [movAEditar, setMovAEditar] = useState<Movimiento | null>(null)
   const [modalCajaAbierto, setModalCajaAbierto] = useState(false)
+  const [modalDevolucionAbierto, setModalDevolucionAbierto] = useState(false)
 
   // Permisos dinámicos del usuario activo
   const permisos = useMemo(() => {
     return StorageService.getPermisos(usuarioActual)
   }, [usuarioActual, roles])
+
+  // Métricas reactivas de aportes pendientes para la campanita de notificación
+  const { cantidadAportesPendientes, montoAportesPendientes } = useMemo(() => {
+    let cant = 0
+    let monto = 0
+    movimientos
+      .filter((m) => m.estado === 'REGISTRADO' && m.tipo === 'COMPRAR' && (m.monto_adicional || 0) > 0)
+      .forEach((m) => {
+        if (m.aportes_adicionales && m.aportes_adicionales.length > 0) {
+          m.aportes_adicionales.forEach((ap) => {
+            if (ap.estado !== 'DEVUELTO') {
+              cant += 1
+              monto += ap.monto
+            }
+          })
+        } else if (!m.aporte_devuelto) {
+          cant += 1
+          monto += m.monto_adicional || 0
+        }
+      })
+    return { cantidadAportesPendientes: cant, montoAportesPendientes: monto }
+  }, [movimientos])
 
   // Balance general para Saldo en Caja en navbar
   const balanceGeneral = useMemo(() => calcularBalance(movimientos), [movimientos])
@@ -230,6 +254,71 @@ export function App() {
     }
   }
 
+  // Guardar devolución masiva de aportes con comprobantes opcionales
+  const handleGuardarDevolucion = async (
+    devoluciones: Array<{ movimientoId: string; monto: number; socioId: string }>,
+    datos: {
+      fecha: string
+      observaciones: string
+      comprobantes: string[]
+      devueltoPorNombre: string
+    }
+  ) => {
+    let nuevosMovimientos = [...movimientos]
+
+    for (const dev of devoluciones) {
+      const idx = nuevosMovimientos.findIndex((m) => m.id === dev.movimientoId)
+      if (idx >= 0) {
+        const mov = nuevosMovimientos[idx]
+        let aportes = mov.aportes_adicionales ? [...mov.aportes_adicionales] : []
+
+        if (aportes.length === 0 && (mov.monto_adicional || 0) > 0) {
+          aportes = [
+            {
+              id: `ap-${mov.id}`,
+              participante_id: dev.socioId,
+              monto: dev.monto,
+              estado: 'DEVUELTO',
+              fecha_devolucion: datos.fecha,
+              devuelto_por: datos.devueltoPorNombre,
+              comprobantes_devolucion: datos.comprobantes,
+              observaciones_devolucion: datos.observaciones,
+            },
+          ]
+        } else {
+          aportes = aportes.map((ap) => {
+            if (ap.participante_id === dev.socioId || aportes.length === 1) {
+              return {
+                ...ap,
+                estado: 'DEVUELTO' as const,
+                fecha_devolucion: datos.fecha,
+                devuelto_por: datos.devueltoPorNombre,
+                comprobantes_devolucion: datos.comprobantes,
+                observaciones_devolucion: datos.observaciones,
+              }
+            }
+            return ap
+          })
+        }
+
+        const actualizado: Movimiento = {
+          ...mov,
+          aportes_adicionales: aportes,
+          aporte_devuelto: true,
+          fecha_devolucion_aporte: datos.fecha,
+          devuelto_por: datos.devueltoPorNombre,
+          comprobantes_devolucion: datos.comprobantes,
+          observaciones_devolucion: datos.observaciones,
+        }
+
+        nuevosMovimientos[idx] = actualizado
+        await DataService.updateMovimiento(actualizado)
+      }
+    }
+
+    setMovimientos(nuevosMovimientos)
+  }
+
   // Guardar nueva foto de la máquina
   const handleFotoGuardada = async (foto: FotoMaquina) => {
     await DataService.saveFotoMaquina(foto)
@@ -345,6 +434,9 @@ export function App() {
           onCerrarSesion={handleCerrarSesion}
           onVerDetalle={(m) => setDetalleMov(m)}
           onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
+          cantidadAportesPendientes={cantidadAportesPendientes}
+          montoAportesPendientes={montoAportesPendientes}
+          onAbrirDevolucionAportes={() => setModalDevolucionAbierto(true)}
         />
       ) : (
         /* VISTA 2: PANEL COMPLETO CON ACCESO CONTROLADO POR ROLES */
@@ -362,6 +454,9 @@ export function App() {
             }}
             onAbrirFotoMaquina={abrirRegistroFotoMaquina}
             onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
+            cantidadAportesPendientes={cantidadAportesPendientes}
+            montoAportesPendientes={montoAportesPendientes}
+            onAbrirDevolucionAportes={() => setModalDevolucionAbierto(true)}
             onReset={handleVaciarMovimientos}
             onVolverInicio={() => setModoAdmin(false)}
             onCerrarSesion={handleCerrarSesion}
@@ -507,10 +602,21 @@ export function App() {
         movimientos={movimientos}
         participantes={participantes}
         onCambiarEstadoAporte={handleCambiarEstadoAporte}
+        onAbrirModalDevolucion={() => setModalDevolucionAbierto(true)}
         onVerDetalleMovimiento={(m) => {
           setModalCajaAbierto(false)
           setDetalleMov(m)
         }}
+      />
+
+      {/* Modal Devolución de Aportes a Socios (Múltiples socios y fotos opcionales) */}
+      <ModalDevolucionAportes
+        isOpen={modalDevolucionAbierto}
+        onClose={() => setModalDevolucionAbierto(false)}
+        movimientos={movimientos}
+        participantes={participantes}
+        usuarioActual={usuarioActual}
+        onGuardarDevolucion={handleGuardarDevolucion}
       />
     </>
   )

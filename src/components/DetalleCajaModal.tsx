@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Undo2,
+  Bell,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { calcularBalance, formatearMoneda } from '../utils/calculations'
@@ -24,6 +25,7 @@ interface DetalleCajaModalProps {
   participantes: Participante[]
   onVerDetalleMovimiento?: (mov: Movimiento) => void
   onCambiarEstadoAporte?: (movimientoId: string, nuevoEstado: 'DEVUELTO' | 'PENDIENTE') => Promise<void>
+  onAbrirModalDevolucion?: () => void
 }
 
 interface ItemFlujoCaja {
@@ -58,6 +60,7 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
   participantes,
   onVerDetalleMovimiento,
   onCambiarEstadoAporte,
+  onAbrirModalDevolucion,
 }) => {
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ENTRADAS' | 'SALIDAS'>('TODOS')
   const [mostrarHistorialDevueltos, setMostrarHistorialDevueltos] = useState(false)
@@ -353,9 +356,25 @@ export const DetalleCajaModal: React.FC<DetalleCajaModalProps> = ({
                     Aportes Pendientes por Devolver a Socios ({aportesPendientes.length})
                   </span>
                 </div>
-                <span className="text-xs font-black text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
-                  Total por devolver: +{formatearMoneda(aportesPendientes.reduce((acc, a) => acc + a.monto, 0))}
-                </span>
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  <span className="text-xs font-black text-amber-900 bg-amber-200/80 px-2.5 py-1 rounded-xl">
+                    Total: +{formatearMoneda(aportesPendientes.reduce((acc, a) => acc + a.monto, 0))}
+                  </span>
+                  {onAbrirModalDevolucion && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        onAbrirModalDevolucion()
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95"
+                      title="Abrir formulario para devolver varios socios o adjuntar fotos"
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      <span>Devolver Varios / Con Foto</span>
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="text-xs text-amber-800 leading-relaxed">
                 Cuando no hubo suficiente saldo en caja, los siguientes socios cubrieron el faltante con su dinero personal. Toca <strong>«Marcar Devuelto»</strong> en cuanto se le entregue su reembolso:

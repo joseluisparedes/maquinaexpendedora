@@ -15,6 +15,7 @@ import {
   ReceiptText,
   Images,
   Settings,
+  Bell,
 } from 'lucide-react'
 import type { FotoMaquina, Movimiento, Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -36,6 +37,9 @@ interface PantallaInicioMovilProps {
   onIrACierre: () => void
   onVerDetalle: (m: Movimiento) => void
   onAbrirDetalleCaja?: () => void
+  cantidadAportesPendientes?: number
+  montoAportesPendientes?: number
+  onAbrirDevolucionAportes?: () => void
 }
 
 export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
@@ -55,6 +59,9 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   onIrACierre,
   onVerDetalle,
   onAbrirDetalleCaja,
+  cantidadAportesPendientes = 0,
+  montoAportesPendientes = 0,
+  onAbrirDevolucionAportes,
 }) => {
   const ultimosMovimientos = movimientos.slice(0, 3)
   const esOperador = !permisos.puede_ganar && !permisos.puede_comprar && permisos.puede_foto_maquina
@@ -96,6 +103,31 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Campanita de Notificación de Devoluciones Pendientes */}
+            {(permisos.puede_ganar || permisos.puede_comprar || permisos.puede_gestionar_usuarios) && (
+              <button
+                type="button"
+                onClick={onAbrirDevolucionAportes}
+                className={`relative p-1.5 rounded-xl transition-all cursor-pointer ${
+                  cantidadAportesPendientes > 0
+                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-2xs'
+                    : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+                }`}
+                title={
+                  cantidadAportesPendientes > 0
+                    ? `Tienes ${cantidadAportesPendientes} aporte(s) pendiente(s) por devolver (+${formatearMoneda(montoAportesPendientes)})`
+                    : 'Sin aportes pendientes por devolver'
+                }
+              >
+                <Bell className={`w-4 h-4 ${cantidadAportesPendientes > 0 ? 'text-amber-800' : ''}`} />
+                {cantidadAportesPendientes > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white shadow-xs">
+                    {cantidadAportesPendientes}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Si es Admin, acceso directo a Configuración General */}
             {permisos.puede_config_reparto && (
               <button

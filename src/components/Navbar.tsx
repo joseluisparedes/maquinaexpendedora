@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Camera,
   LogOut,
+  Bell,
 } from 'lucide-react'
 import type { Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -28,6 +29,9 @@ interface NavbarProps {
   onNuevoMovimiento: () => void
   onAbrirFotoMaquina: () => void
   onAbrirDetalleCaja?: () => void
+  cantidadAportesPendientes?: number
+  montoAportesPendientes?: number
+  onAbrirDevolucionAportes?: () => void
   onReset: () => void
   onVolverInicio: () => void
   onCerrarSesion: () => void
@@ -43,6 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNuevoMovimiento,
   onAbrirFotoMaquina,
   onAbrirDetalleCaja,
+  cantidadAportesPendientes = 0,
+  montoAportesPendientes = 0,
+  onAbrirDevolucionAportes,
   onReset,
   onVolverInicio,
   onCerrarSesion,
@@ -145,6 +152,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {formatearMoneda(saldoCaja)}
                   </p>
                 </div>
+              </button>
+            )}
+
+            {/* Campanita de Notificación de Aportes Pendientes */}
+            {mostrarFinanzas && (
+              <button
+                type="button"
+                onClick={onAbrirDevolucionAportes}
+                className={`relative p-2 rounded-xl transition-all cursor-pointer group active:scale-95 ${
+                  cantidadAportesPendientes > 0
+                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700'
+                }`}
+                title={
+                  cantidadAportesPendientes > 0
+                    ? `Tienes ${cantidadAportesPendientes} aporte(s) pendiente(s) por devolver (+${formatearMoneda(montoAportesPendientes)})`
+                    : 'Sin aportes pendientes por devolver'
+                }
+              >
+                <Bell className={`w-5 h-5 ${cantidadAportesPendientes > 0 ? 'text-amber-700 animate-wiggle' : ''}`} />
+                {cantidadAportesPendientes > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-xs">
+                    {cantidadAportesPendientes}
+                  </span>
+                )}
               </button>
             )}
 

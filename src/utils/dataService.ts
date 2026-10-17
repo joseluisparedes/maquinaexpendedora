@@ -184,6 +184,22 @@ export const DataService = {
           destino_sobrante: row.destino_sobrante,
           quien_aporto_adicional: row.quien_aporto_adicional,
           aportes_adicionales: row.aportes_adicionales,
+          aporte_devuelto: Boolean(
+            Array.isArray(row.aportes_adicionales) &&
+            row.aportes_adicionales.some((a: any) => a.estado === 'DEVUELTO')
+          ),
+          fecha_devolucion_aporte: Array.isArray(row.aportes_adicionales)
+            ? row.aportes_adicionales.find((a: any) => a.estado === 'DEVUELTO')?.fecha_devolucion
+            : undefined,
+          devuelto_por: Array.isArray(row.aportes_adicionales)
+            ? row.aportes_adicionales.find((a: any) => a.estado === 'DEVUELTO')?.devuelto_por
+            : undefined,
+          comprobantes_devolucion: Array.isArray(row.aportes_adicionales)
+            ? row.aportes_adicionales.find((a: any) => a.comprobantes_devolucion?.length > 0)?.comprobantes_devolucion
+            : undefined,
+          observaciones_devolucion: Array.isArray(row.aportes_adicionales)
+            ? row.aportes_adicionales.find((a: any) => a.observaciones_devolucion)?.observaciones_devolucion
+            : undefined,
           detalle_productos: row.detalle_productos,
           movimiento_sobrante_repartido_id: row.movimiento_sobrante_repartido_id,
           creado_el: row.creado_el,

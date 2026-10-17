@@ -359,6 +359,62 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Comprobantes / Fotos de la Devolución si existen */}
+          {movimiento.comprobantes_devolucion && movimiento.comprobantes_devolucion.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-emerald-800 uppercase flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Vouchers / Fotos de Devolución ({movimiento.comprobantes_devolucion.length})
+                </p>
+                <span className="text-[10px] text-slate-400">Constancia de reembolso</span>
+              </div>
+              {movimiento.observaciones_devolucion && (
+                <p className="text-xs text-slate-700 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100 font-medium">
+                  Nota: {movimiento.observaciones_devolucion}
+                </p>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {movimiento.comprobantes_devolucion.map((foto, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative bg-slate-900 rounded-xl overflow-hidden border border-slate-200 aspect-4/3 flex flex-col justify-between shadow-2xs"
+                  >
+                    <img
+                      src={foto}
+                      alt={`Comprobante devolución ${idx + 1}`}
+                      className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
+                      onClick={() => setFotoEnPantallaCompleta(foto)}
+                    />
+                    <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                      #{idx + 1}
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setFotoEnPantallaCompleta(foto)}
+                        className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                        title="Ver en grande"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          descargarImagen(foto, `devolucion-${movimiento.codigo}-${idx + 1}.jpg`)
+                        }
+                        className="p-1 rounded-lg bg-white/20 hover:bg-white text-white hover:text-slate-900 transition-colors cursor-pointer"
+                        title="Descargar comprobante"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

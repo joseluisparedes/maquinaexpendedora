@@ -66,6 +66,8 @@ export interface AporteAdicional {
   estado: 'PENDIENTE' | 'DEVUELTO'
   fecha_devolucion?: string
   devuelto_por?: string
+  comprobantes_devolucion?: string[]
+  observaciones_devolucion?: string
 }
 
 export interface RepartoItem {
@@ -108,6 +110,8 @@ export interface Movimiento {
   aporte_devuelto?: boolean
   fecha_devolucion_aporte?: string
   devuelto_por?: string
+  comprobantes_devolucion?: string[]
+  observaciones_devolucion?: string
   detalle_productos?: ProductoDetalle[]
   movimiento_sobrante_repartido_id?: string // Id del movimiento GANAR que se generó si destino_sobrante === 'REPARTO'
 
