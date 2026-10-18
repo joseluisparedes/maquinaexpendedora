@@ -36,6 +36,41 @@ export interface FotoMaquina {
   observaciones?: string
   registrado_por: string // participante id
   creado_el: string
+  ciclo_id?: string
+}
+
+export type TipoCiclo = 'ABASTECIMIENTO' | 'GANANCIA'
+export type EstadoCiclo = 'INICIADO' | 'EN_PROCESO' | 'CERRADO'
+
+export interface CicloMaquina {
+  id: string
+  codigo: string // Ej: CICLO-001
+  tipo: TipoCiclo
+  estado: EstadoCiclo
+  etapa_actual: string // Descripción legible de en qué etapa vamos
+  fecha_inicio: string // YYYY-MM-DD
+  hora_inicio: string // HH:mm
+  iniciado_por: string // participante_id
+  iniciado_por_nombre?: string
+
+  // Foto ANTES (Obligatoria para iniciar)
+  foto_antes_url: string
+  observaciones_antes?: string
+
+  // Foto DESPUÉS (Obligatoria para cerrar abastecimiento)
+  foto_despues_url?: string
+  observaciones_despues?: string
+  fecha_despues?: string
+  hora_despues?: string
+  cerrado_por?: string // participante_id
+  cerrado_por_nombre?: string
+
+  // Movimiento(s) vinculado(s)
+  movimiento_ids?: string[]
+  monto_involucrado?: number // Gasto en compra o recaudación en ganancia
+
+  creado_el: string
+  actualizado_el?: string
 }
 
 
@@ -103,6 +138,7 @@ export interface Movimiento {
   comprobante_url?: string
   comprobantes?: string[] // Múltiples fotos o comprobantes
   origen_movimiento_id?: string // Si es sobrante de compra vinculada
+  ciclo_id?: string // ID del ciclo de máquina vinculado
 
   // Para movimientos GANAR
   monto_ganado?: number

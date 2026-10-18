@@ -11,9 +11,11 @@ import {
   Filter,
   Users,
   Store,
+  ChevronRight,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { calcularBalance, formatearMoneda } from '../utils/calculations'
+import { DetalleGananciaPersonaModal } from './DetalleGananciaPersonaModal'
 
 interface DashboardViewProps {
   movimientos: Movimiento[]
@@ -21,14 +23,17 @@ interface DashboardViewProps {
   onNuevoMovimiento: () => void
   onVerMovimientos: () => void
   onAbrirDetalleCaja?: () => void
+  onVerMovimiento?: (m: Movimiento) => void
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   movimientos,
   participantes,
   onAbrirDetalleCaja,
+  onVerMovimiento,
 }) => {
   const [filtroPeriodo, setFiltroPeriodo] = useState<'todo' | 'este-mes' | 'mes-anterior' | 'esta-semana'>('todo')
+  const [personaSeleccionada, setPersonaSeleccionada] = useState<Participante | null>(null)
 
   // Filtrado de movimientos por fecha
   const movimientosFiltrados = useMemo(() => {
@@ -68,6 +73,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const mapa = new Map<
       string,
       {
+        id: string
         nombre: string
         rol: string
         es_socio: boolean
@@ -80,6 +86,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     participantes.forEach((p) => {
       mapa.set(p.id, {
+        id: p.id,
         nombre: p.nombre,
         rol: p.rol,
         es_socio: p.es_socio,
@@ -400,26 +407,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Users className="w-5 h-5 text-indigo-600" />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {resumenParticipantes.map((p) => {
               const totalRecibido = p.gananciasRecibidas + p.sobrantesRecibidos
               const porcentajeDelTotal =
                 balance.totalGanado > 0 ? (totalRecibido / balance.totalGanado) * 100 : 0
 
               return (
-                <div key={p.nombre} className="space-y-1">
+                <div
+                  key={p.nombre}
+                  onClick={() => setPersonaSeleccionada(participantes.find((part) => part.id === p.id) || null)}
+                  className="space-y-1 p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+                  title="Haz clic para ver el desglose de ganancias de esta persona"
+                >
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-slate-800">{p.nombre}</span>
+                      <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                        {p.nombre}
+                      </span>
                       <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                         {p.rol}
                       </span>
                     </div>
-                    <span className="font-black text-indigo-700">
-                      {formatearMoneda(totalRecibido)}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-black text-indigo-700">
+                        {formatearMoneda(totalRecibido)}
+                      </span>
+                      <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-indigo-600 h-full rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(100, Math.max(0, porcentajeDelTotal))}%` }}
@@ -438,7 +455,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <h3 className="text-base font-bold text-slate-900">Estado de Cuenta por Participante</h3>
             <p className="text-xs text-slate-500">
-              Detalle de ganancias recibidas, sobrantes y aportes pendientes de devolución
+              Detalle de ganancias recibidas, sobrantes y aportes pendientes de devolución (toca una fila para ver el detalle)
             </p>
           </div>
         </div>
@@ -453,19 +470,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <th className="py-3 px-4 text-right">Sobrantes Recibidos</th>
                 <th className="py-3 px-4 text-right">Total Percibido</th>
                 <th className="py-3 px-4 text-right">Aportes Extra Puestos</th>
-                <th className="py-3 px-4 text-right">Pendiente de Devolución</th>
+                <th className="py-3 px-4 text-right">Pendiente Reembolso</th>
+                <th className="py-3 px-4 text-center">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {resumenParticipantes.map((part) => {
                 const totalPercibido = part.gananciasRecibidas + part.sobrantesRecibidos
                 return (
-                  <tr key={part.nombre} className="hover:bg-slate-50/60 transition-colors">
+                  <tr
+                    key={part.nombre}
+                    onClick={() => setPersonaSeleccionada(participantes.find((p) => p.id === part.id) || null)}
+                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors group"
+                  >
                     <td className="py-3.5 px-4 font-semibold text-slate-900 flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                         {part.nombre.charAt(0)}
                       </div>
-                      {part.nombre}
+                      <span className="group-hover:text-indigo-600 transition-colors font-bold">
+                        {part.nombre}
+                      </span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-500">
                       {part.rol}
@@ -489,6 +513,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold text-amber-600">
                       {part.aportesPendientes > 0 ? formatearMoneda(part.aportesPendientes) : '—'}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPersonaSeleccionada(participantes.find((p) => p.id === part.id) || null)
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <span>Detalle</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
                     </td>
                   </tr>
                 )
@@ -520,6 +557,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Detalle de Ganancias por Persona */}
+      <DetalleGananciaPersonaModal
+        isOpen={Boolean(personaSeleccionada)}
+        onClose={() => setPersonaSeleccionada(null)}
+        participante={personaSeleccionada}
+        movimientos={movimientosFiltrados}
+        onVerMovimiento={onVerMovimiento}
+      />
     </div>
   )
 }

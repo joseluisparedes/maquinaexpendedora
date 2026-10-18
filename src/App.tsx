@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar'
 import { PantallaInicioMovil } from './components/PantallaInicioMovil'
 import { DashboardView } from './components/DashboardView'
 import { MovimientosView } from './components/MovimientosView'
+import { CiclosView } from './components/CiclosView'
 import { CierrePeriodoView } from './components/CierrePeriodoView'
 import { ParticipantesView } from './components/ParticipantesView'
 import { ConfiguracionView } from './components/ConfiguracionView'
@@ -15,7 +16,19 @@ import { GaleriaFotosModal } from './components/GaleriaFotosModal'
 import { EditarMovimientoModal } from './components/EditarMovimientoModal'
 import { DetalleCajaModal } from './components/DetalleCajaModal'
 import { ModalDevolucionAportes } from './components/ModalDevolucionAportes'
-import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion, DeudaSocioCompra } from './types'
+import { IniciarCicloModal } from './components/IniciarCicloModal'
+import { CerrarAbastecimientoModal } from './components/CerrarAbastecimientoModal'
+import { DetalleCicloModal } from './components/DetalleCicloModal'
+import type {
+  ConfigReparto,
+  FotoMaquina,
+  Movimiento,
+  Participante,
+  RolDefinicion,
+  DeudaSocioCompra,
+  CicloMaquina,
+  TipoCiclo,
+} from './types'
 import { StorageService } from './utils/storage'
 import { DataService } from './utils/dataService'
 import { calcularBalance } from './utils/calculations'
@@ -36,7 +49,7 @@ export function App() {
   const [modoAdmin, setModoAdmin] = useState(false)
 
   const [vistaActual, setVistaActual] = useState<
-    'dashboard' | 'movimientos' | 'cierre' | 'participantes' | 'config'
+    'dashboard' | 'movimientos' | 'ciclos' | 'cierre' | 'participantes' | 'config'
   >('dashboard')
 
   // Estados de datos
@@ -50,6 +63,9 @@ export function App() {
   const [fotosMaquina, setFotosMaquina] = useState<FotoMaquina[]>(() =>
     StorageService.getFotosMaquina()
   )
+  const [ciclos, setCiclos] = useState<CicloMaquina[]>(() =>
+    StorageService.getCiclos()
+  )
 
   // Estado conexión Supabase
   const [conectadoSupabase, setConectadoSupabase] = useState(false)
@@ -58,6 +74,9 @@ export function App() {
   // Modales
   const [modalRegistroAbierto, setModalRegistroAbierto] = useState(false)
   const [tipoModalInicial, setTipoModalInicial] = useState<'GANAR' | 'COMPRAR'>('GANAR')
+  const [modalIniciarCicloAbierto, setModalIniciarCicloAbierto] = useState(false)
+  const [modalCerrarAbastAbierto, setModalCerrarAbastAbierto] = useState(false)
+  const [detalleCicloSeleccionado, setDetalleCicloSeleccionado] = useState<CicloMaquina | null>(null)
   const [detalleMov, setDetalleMov] = useState<Movimiento | null>(null)
   const [movAAnular, setMovAAnular] = useState<Movimiento | null>(null)
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false)
@@ -85,18 +104,22 @@ export function App() {
   // Balance general para Saldo en Caja en navbar
   const balanceGeneral = useMemo(() => calcularBalance(movimientos), [movimientos])
 
+  // Ciclo activo actual de la máquina (Ruta de Abastecimiento o Ganancia)
+  const cicloActivo = useMemo(() => ciclos.find((c) => c.estado !== 'CERRADO') || null, [ciclos])
+
   // Cargar datos
   const cargarDatos = useCallback(async () => {
     const estado = await DataService.verificarConexionSupabase()
     setConectadoSupabase(estado.conectado)
     setMensajeSupabase(estado.mensaje)
 
-    const [parts, cfgs, movs, rls, fts] = await Promise.all([
+    const [parts, cfgs, movs, rls, fts, cls] = await Promise.all([
       DataService.getParticipantes(),
       DataService.getConfigRepartos(),
       DataService.getMovimientos(),
       DataService.getRoles(),
       DataService.getFotosMaquina(),
+      DataService.getCiclos(),
     ])
 
     setParticipantes(parts)
@@ -104,6 +127,7 @@ export function App() {
     setMovimientos(movs)
     setRoles(rls)
     setFotosMaquina(fts)
+    setCiclos(cls)
 
     // Sincronizar sesión activa si el rol o PIN fue actualizado en la nube
     setUsuarioActual((prev) => {
@@ -144,10 +168,139 @@ export function App() {
     setModoAdmin(false)
   }
 
+  // Iniciar un nuevo ciclo con Foto ANTES obligatoria y selección de ruta
+  const handleIniciarCiclo = async (datos: {
+    tipo: TipoCiclo
+    fotoAntes: string
+    observaciones?: string
+  }) => {
+    const ahora = new Date()
+    const fecha = ahora.toISOString().split('T')[0]
+    const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const correlativo = (ciclos.length + 1).toString().padStart(3, '0')
+
+    const nuevoCiclo: CicloMaquina = {
+      id: `ciclo-${Date.now()}`,
+      codigo: `CICLO-${correlativo}`,
+      tipo: datos.tipo,
+      estado: 'INICIADO',
+      fecha_inicio: fecha,
+      hora_inicio: hora,
+      iniciado_por: usuarioActual?.id || '',
+      iniciado_por_nombre: usuarioActual?.nombre || '',
+      foto_antes_url: datos.fotoAntes,
+      observaciones_antes: datos.observaciones,
+      etapa_actual:
+        datos.tipo === 'ABASTECIMIENTO'
+          ? 'Foto antes tomada - Esperando compra de mercadería'
+          : 'Foto antes tomada - Esperando retiro y distribución de recaudación',
+      movimiento_ids: [],
+      creado_el: ahora.toISOString(),
+      actualizado_el: ahora.toISOString(),
+    }
+
+    await DataService.saveCiclo(nuevoCiclo)
+    setCiclos((prev) => [nuevoCiclo, ...prev])
+
+    // Registrar en histórico de fotos de la máquina
+    const nuevaFoto: FotoMaquina = {
+      id: `foto-${Date.now()}`,
+      tipo: 'ANTES',
+      fecha: fecha,
+      hora: hora,
+      foto_url: datos.fotoAntes,
+      registrado_por: usuarioActual?.id || '',
+      observaciones: `Foto inicial del Ciclo de ${
+        datos.tipo === 'ABASTECIMIENTO' ? 'Abastecimiento' : 'Ganancia'
+      }${datos.observaciones ? `: ${datos.observaciones}` : ''}`,
+      ciclo_id: nuevoCiclo.id,
+      creado_el: ahora.toISOString(),
+    }
+    await DataService.saveFotoMaquina(nuevaFoto)
+    setFotosMaquina((prev) => [nuevaFoto, ...prev])
+  }
+
+  // Cerrar ciclo de abastecimiento con Foto DESPUÉS
+  const handleCerrarAbastecimiento = async (datos: {
+    fotoDespues: string
+    observaciones?: string
+  }) => {
+    if (!cicloActivo) return
+    const ahora = new Date()
+    const fecha = ahora.toISOString().split('T')[0]
+    const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+    const cicloCerrado: CicloMaquina = {
+      ...cicloActivo,
+      estado: 'CERRADO',
+      fecha_despues: fecha,
+      hora_despues: hora,
+      cerrado_por: usuarioActual?.id || '',
+      cerrado_por_nombre: usuarioActual?.nombre || '',
+      foto_despues_url: datos.fotoDespues,
+      observaciones_despues: datos.observaciones,
+      etapa_actual: 'Ciclo cerrado - Máquina abastecida y vitrina auditada',
+      actualizado_el: ahora.toISOString(),
+    }
+
+    await DataService.updateCiclo(cicloCerrado)
+    setCiclos((prev) => prev.map((c) => (c.id === cicloCerrado.id ? cicloCerrado : c)))
+
+    // Registrar foto después en histórico
+    const nuevaFoto: FotoMaquina = {
+      id: `foto-${Date.now()}`,
+      tipo: 'DESPUES',
+      fecha: fecha,
+      hora: hora,
+      foto_url: datos.fotoDespues,
+      registrado_por: usuarioActual?.id || '',
+      observaciones: `Foto final de cierre de abastecimiento${
+        datos.observaciones ? `: ${datos.observaciones}` : ''
+      }`,
+      ciclo_id: cicloActivo.id,
+      creado_el: ahora.toISOString(),
+    }
+    await DataService.saveFotoMaquina(nuevaFoto)
+    setFotosMaquina((prev) => [nuevaFoto, ...prev])
+  }
+
+  // Cancelar ciclo activo manualmente
+  const handleCancelarCiclo = async (cicloId: string) => {
+    if (window.confirm('¿Deseas cancelar este ciclo activo?')) {
+      const ciclo = ciclos.find((c) => c.id === cicloId)
+      if (!ciclo) return
+      const ahora = new Date()
+      const fecha = ahora.toISOString().split('T')[0]
+      const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+      const cancelado: CicloMaquina = {
+        ...ciclo,
+        estado: 'CERRADO',
+        fecha_despues: fecha,
+        hora_despues: hora,
+        cerrado_por: usuarioActual?.id || '',
+        cerrado_por_nombre: usuarioActual?.nombre || '',
+        etapa_actual: 'Ciclo cancelado anticipadamente',
+        observaciones_despues: 'Cancelado por el usuario',
+        actualizado_el: ahora.toISOString(),
+      }
+      await DataService.updateCiclo(cancelado)
+      setCiclos((prev) => prev.map((c) => (c.id === cancelado.id ? cancelado : c)))
+    }
+  }
+
   // Triggers para abrir Ganar o Comprar
   const abrirRegistroGanar = () => {
     if (!permisos.puede_ganar) {
       alert('Tu rol no tiene permisos para registrar ganancias.')
+      return
+    }
+    if (!cicloActivo) {
+      setModalIniciarCicloAbierto(true)
+      return
+    }
+    if (cicloActivo.tipo === 'ABASTECIMIENTO') {
+      alert('El ciclo activo es de ABASTECIMIENTO. No puedes registrar ganancias en esta ruta.')
       return
     }
     setTipoModalInicial('GANAR')
@@ -157,6 +310,14 @@ export function App() {
   const abrirRegistroComprar = () => {
     if (!permisos.puede_comprar) {
       alert('Tu rol no tiene permisos para registrar compras.')
+      return
+    }
+    if (!cicloActivo) {
+      setModalIniciarCicloAbierto(true)
+      return
+    }
+    if (cicloActivo.tipo === 'GANANCIA') {
+      alert('El ciclo activo es de GANANCIA. No puedes registrar compras de mercadería en esta ruta.')
       return
     }
     setTipoModalInicial('COMPRAR')
@@ -176,16 +337,65 @@ export function App() {
     nuevo: Movimiento,
     movSobranteAsociado?: Movimiento
   ) => {
-    await DataService.saveMovimiento(nuevo)
-    if (movSobranteAsociado) {
-      await DataService.saveMovimiento(movSobranteAsociado)
+    let movNuevo = nuevo
+    let movSob = movSobranteAsociado
+
+    if (cicloActivo) {
+      movNuevo = { ...movNuevo, ciclo_id: cicloActivo.id }
+      if (movSob) {
+        movSob = { ...movSob, ciclo_id: cicloActivo.id }
+      }
     }
 
-    let nuevosMovimientos = [nuevo, ...movimientos]
-    if (movSobranteAsociado) {
-      nuevosMovimientos = [movSobranteAsociado, ...nuevosMovimientos]
+    await DataService.saveMovimiento(movNuevo)
+    if (movSob) {
+      await DataService.saveMovimiento(movSob)
+    }
+
+    let nuevosMovimientos = [movNuevo, ...movimientos]
+    if (movSob) {
+      nuevosMovimientos = [movSob, ...nuevosMovimientos]
     }
     setMovimientos(nuevosMovimientos)
+
+    // Si hay ciclo activo, avanzar o cerrar de acuerdo con el tipo de ruta
+    if (cicloActivo) {
+      const ahora = new Date()
+      if (cicloActivo.tipo === 'ABASTECIMIENTO') {
+        const cicloActualizado: CicloMaquina = {
+          ...cicloActivo,
+          estado: 'EN_PROCESO',
+          movimiento_ids: [...(cicloActivo.movimiento_ids || []), movNuevo.id],
+          monto_involucrado: movNuevo.total_gastado,
+          etapa_actual: 'Compra registrada - Esperando foto final de abastecimiento de vitrina',
+          actualizado_el: ahora.toISOString(),
+        }
+        await DataService.updateCiclo(cicloActualizado)
+        setCiclos((prev) =>
+          prev.map((c) => (c.id === cicloActualizado.id ? cicloActualizado : c))
+        )
+      } else if (cicloActivo.tipo === 'GANANCIA') {
+        // En Ganancia: finaliza automáticamente con el reparto del dinero
+        const fecha = ahora.toISOString().split('T')[0]
+        const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const cicloActualizado: CicloMaquina = {
+          ...cicloActivo,
+          estado: 'CERRADO',
+          fecha_despues: fecha,
+          hora_despues: hora,
+          cerrado_por: usuarioActual?.id || '',
+          cerrado_por_nombre: usuarioActual?.nombre || '',
+          movimiento_ids: [...(cicloActivo.movimiento_ids || []), movNuevo.id],
+          monto_involucrado: movNuevo.monto_ganado,
+          etapa_actual: 'Ciclo cerrado - Recaudación distribuida automáticamente',
+          actualizado_el: ahora.toISOString(),
+        }
+        await DataService.updateCiclo(cicloActualizado)
+        setCiclos((prev) =>
+          prev.map((c) => (c.id === cicloActualizado.id ? cicloActualizado : c))
+        )
+      }
+    }
   }
 
   // Actualizar movimiento editado
@@ -445,6 +655,11 @@ export function App() {
           cantidadAportesPendientes={cantidadAportesPendientes}
           montoAportesPendientes={montoAportesPendientes}
           onAbrirDevolucionAportes={() => setModalDevolucionAbierto(true)}
+          ciclos={ciclos}
+          onAbrirIniciarCiclo={() => setModalIniciarCicloAbierto(true)}
+          onAbrirCerrarAbastecimiento={() => setModalCerrarAbastAbierto(true)}
+          onVerDetalleCiclo={(c) => setDetalleCicloSeleccionado(c)}
+          onCancelarCiclo={handleCancelarCiclo}
         />
       ) : (
         /* VISTA 2: PANEL COMPLETO CON ACCESO CONTROLADO POR ROLES */
@@ -482,6 +697,19 @@ export function App() {
                 }}
                 onVerMovimientos={() => setVistaActual('movimientos')}
                 onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
+              />
+            )}
+
+            {/* Ciclos de Máquina (Ruta de Abastecimiento & Ganancia) */}
+            {vistaActual === 'ciclos' && (
+              <CiclosView
+                ciclos={ciclos}
+                movimientos={movimientos}
+                participantes={participantes}
+                usuarioActual={usuarioActual}
+                onAbrirIniciarCiclo={() => setModalIniciarCicloAbierto(true)}
+                onVerDetalleCiclo={(c) => setDetalleCicloSeleccionado(c)}
+                onAbrirCerrarAbastecimiento={() => setModalCerrarAbastAbierto(true)}
               />
             )}
 
@@ -626,6 +854,47 @@ export function App() {
         usuarioActual={usuarioActual}
         onGuardarDevolucion={handleGuardarDevolucion}
         onActualizarDeuda={handleActualizarDeuda}
+      />
+
+      {/* Modal Iniciar Ciclo de Máquina (Foto ANTES obligatoria + Elección de Ruta) */}
+      <IniciarCicloModal
+        isOpen={modalIniciarCicloAbierto}
+        onClose={() => setModalIniciarCicloAbierto(false)}
+        usuarioActual={usuarioActual}
+        onIniciarCiclo={async (datos) => {
+          await handleIniciarCiclo(datos)
+          setModalIniciarCicloAbierto(false)
+        }}
+      />
+
+      {/* Modal Cerrar Abastecimiento (Foto DESPUÉS de vitrina llena) */}
+      <CerrarAbastecimientoModal
+        isOpen={modalCerrarAbastAbierto}
+        onClose={() => setModalCerrarAbastAbierto(false)}
+        ciclo={cicloActivo}
+        movimientoCompra={movimientos.find(
+          (m) =>
+            cicloActivo &&
+            (m.ciclo_id === cicloActivo.id || cicloActivo.movimiento_ids?.includes(m.id))
+        )}
+        usuarioActual={usuarioActual}
+        onCerrarAbastecimiento={async (datos) => {
+          await handleCerrarAbastecimiento(datos)
+          setModalCerrarAbastAbierto(false)
+        }}
+      />
+
+      {/* Modal Detalle de Ciclo (Comparativa Antes/Después y Auditoría) */}
+      <DetalleCicloModal
+        isOpen={Boolean(detalleCicloSeleccionado)}
+        onClose={() => setDetalleCicloSeleccionado(null)}
+        ciclo={detalleCicloSeleccionado}
+        movimientos={movimientos}
+        participantes={participantes}
+        onVerMovimiento={(m) => {
+          setDetalleCicloSeleccionado(null)
+          setDetalleMov(m)
+        }}
       />
     </>
   )

@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { StorageService } from './storage'
-import type { ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from '../types'
+import type { CicloMaquina, ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from '../types'
 
 
 export const DataService = {
@@ -355,6 +355,51 @@ export const DataService = {
 
   async saveFotoMaquina(foto: FotoMaquina): Promise<void> {
     StorageService.addFotoMaquina(foto)
+  },
+
+  // Métodos para Ciclos de Máquina (Journeys)
+  async getCiclos(): Promise<CicloMaquina[]> {
+    if (!supabase || !isSupabaseConfigured) {
+      return StorageService.getCiclos()
+    }
+    try {
+      const { data, error } = await supabase
+        .from('vending_ciclos')
+        .select('*')
+        .order('creado_el', { ascending: false })
+
+      if (error || !data || data.length === 0) {
+        return StorageService.getCiclos()
+      }
+      return data as CicloMaquina[]
+    } catch {
+      return StorageService.getCiclos()
+    }
+  },
+
+  async saveCiclo(ciclo: CicloMaquina): Promise<void> {
+    StorageService.addCiclo(ciclo)
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase.from('vending_ciclos').insert(ciclo)
+      } catch (err) {
+        console.warn('No se pudo guardar ciclo en Supabase (usando local)', err)
+      }
+    }
+  },
+
+  async updateCiclo(actualizado: CicloMaquina): Promise<void> {
+    StorageService.updateCiclo(actualizado)
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('vending_ciclos')
+          .update(actualizado)
+          .eq('id', actualizado.id)
+      } catch (err) {
+        console.warn('No se pudo actualizar ciclo en Supabase (usando local)', err)
+      }
+    }
   },
 
   async updateMovimiento(actualizado: Movimiento): Promise<void> {

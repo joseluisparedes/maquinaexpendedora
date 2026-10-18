@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   Coins,
   TrendingUp,
@@ -16,15 +16,19 @@ import {
   Images,
   Settings,
   Bell,
+  Lock,
+  Sparkles,
 } from 'lucide-react'
-import type { FotoMaquina, Movimiento, Participante, PermisosRol } from '../types'
+import type { CicloMaquina, FotoMaquina, Movimiento, Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
+import { TarjetaCicloActivo } from './TarjetaCicloActivo'
 
 interface PantallaInicioMovilProps {
   saldoCaja: number
   conectadoSupabase: boolean
   movimientos: Movimiento[]
   fotosMaquina: FotoMaquina[]
+  ciclos?: CicloMaquina[]
   usuarioActual: Participante
   permisos: PermisosRol
   onAbrirGanar: () => void
@@ -40,6 +44,10 @@ interface PantallaInicioMovilProps {
   cantidadAportesPendientes?: number
   montoAportesPendientes?: number
   onAbrirDevolucionAportes?: () => void
+  onAbrirIniciarCiclo?: () => void
+  onAbrirCerrarAbastecimiento?: () => void
+  onVerDetalleCiclo?: (c: CicloMaquina) => void
+  onCancelarCiclo?: (cicloId: string) => Promise<void>
 }
 
 export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
@@ -47,6 +55,7 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   conectadoSupabase,
   movimientos,
   fotosMaquina,
+  ciclos = [],
   usuarioActual,
   permisos,
   onAbrirGanar,
@@ -62,10 +71,15 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   cantidadAportesPendientes = 0,
   montoAportesPendientes = 0,
   onAbrirDevolucionAportes,
+  onAbrirIniciarCiclo,
+  onAbrirCerrarAbastecimiento,
+  onVerDetalleCiclo,
+  onCancelarCiclo,
 }) => {
   const ultimosMovimientos = movimientos.slice(0, 3)
   const esOperador = !permisos.puede_ganar && !permisos.puede_comprar && permisos.puede_foto_maquina
   const esDuenoLocal = !permisos.puede_ganar && !permisos.puede_comprar && !permisos.puede_foto_maquina && permisos.puede_ver_movimientos
+  const cicloActivo = useMemo(() => ciclos?.find((c) => c.estado !== 'CERRADO') || null, [ciclos])
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -165,43 +179,84 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
 
       {/* Contenedor Central Adaptado al Celular */}
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-4 flex flex-col justify-between space-y-4">
-        {/* CASO 1: OPERADOR DE MÁQUINA (SOLO TIENE ACCESO A FOTO DE LA MÁQUINA) */}
+        {/* CASO 1: OPERADOR DE MÁQUINA (ROSITA) */}
         {esOperador ? (
           <div className="space-y-4 my-auto">
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm text-center space-y-2">
-              <span className="text-xs font-bold text-cyan-700 bg-cyan-50 px-3 py-1 rounded-full border border-cyan-200 uppercase tracking-wider">
-                Rol: Operador de Máquina
-              </span>
-              <h2 className="text-lg font-black text-slate-900 mt-2">
-                Registro de Estado de la Máquina
-              </h2>
-              <p className="text-xs text-slate-500">
-                Toma una foto con tu teléfono para dejar constancia de cómo se encuentra la máquina antes o después del abasto.
-              </p>
-            </div>
+            {cicloActivo ? (
+              <div className="space-y-3">
+                <TarjetaCicloActivo
+                  ciclo={cicloActivo}
+                  movimientos={movimientos}
+                  usuarioActual={usuarioActual}
+                  onAbrirCerrarAbastecimiento={onAbrirCerrarAbastecimiento}
+                  onAbrirComprar={onAbrirComprar}
+                  onAbrirGanar={onAbrirGanar}
+                  onVerDetalleCiclo={onVerDetalleCiclo}
+                  onCancelarCiclo={onCancelarCiclo}
+                />
 
-            {/* BOTÓN GIGANTE: FOTO DE LA MÁQUINA */}
-            <button
-              onClick={onAbrirFotoMaquina}
-              className="w-full bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 text-white p-6 rounded-3xl shadow-lg shadow-teal-200/50 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-teal-400/30"
-            >
-              <div className="flex items-center gap-4 text-left">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                  <Camera className="w-9 h-9 stroke-[2.3]" />
-                </div>
-                <div>
-                  <span className="text-2xl font-black tracking-tight block">
-                    FOTO MÁQUINA
-                  </span>
-                  <span className="text-xs text-teal-100 font-medium">
-                    📸 Tomar foto (Antes / Después)
-                  </span>
-                </div>
+                {cicloActivo.tipo === 'ABASTECIMIENTO' && cicloActivo.estado === 'EN_PROCESO' && (
+                  <button
+                    onClick={onAbrirCerrarAbastecimiento}
+                    className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-5 rounded-3xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
+                  >
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                        <Camera className="w-8 h-8 stroke-[2.3]" />
+                      </div>
+                      <div>
+                        <span className="text-xl font-black tracking-tight block">
+                          FOTO DESPUÉS
+                        </span>
+                        <span className="text-xs text-emerald-100 font-medium">
+                          📸 Cerrar ciclo con vitrina llena
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                )}
               </div>
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white">
-                <ArrowRight className="w-5 h-5" />
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm text-center space-y-2">
+                  <span className="text-xs font-bold text-cyan-700 bg-cyan-50 px-3 py-1 rounded-full border border-cyan-200 uppercase tracking-wider">
+                    Operación de Máquina
+                  </span>
+                  <h2 className="text-lg font-black text-slate-900 mt-2">
+                    Iniciar Nuevo Ciclo
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Toma la foto obligatoria ANTES de tocar la máquina y selecciona si vas a abastecer o recaudar dinero.
+                  </p>
+                </div>
+
+                {/* BOTÓN GIGANTE: INICIAR CICLO */}
+                <button
+                  onClick={onAbrirIniciarCiclo || onAbrirFotoMaquina}
+                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white p-6 rounded-3xl shadow-lg shadow-indigo-200/50 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-indigo-400/30"
+                >
+                  <div className="flex items-center gap-4 text-left">
+                    <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                      <Camera className="w-9 h-9 stroke-[2.3]" />
+                    </div>
+                    <div>
+                      <span className="text-2xl font-black tracking-tight block">
+                        INICIAR CICLO
+                      </span>
+                      <span className="text-xs text-indigo-100 font-medium">
+                        📸 Foto Antes + Elegir Ruta
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
+                </button>
               </div>
-            </button>
+            )}
 
             {/* Botón Ver Galería de Fotos */}
             <button
@@ -329,66 +384,207 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
               </div>
             </div>
 
-            {/* Sección de BOTONES DE ACCIÓN RÁPIDA */}
+            {/* SECCIÓN DEL CICLO ACTIVO (AUDITORÍA VISUAL PASO A PASO) */}
+            {cicloActivo ? (
+              <div className="space-y-3">
+                <TarjetaCicloActivo
+                  ciclo={cicloActivo}
+                  movimientos={movimientos}
+                  usuarioActual={usuarioActual}
+                  onAbrirComprar={onAbrirComprar}
+                  onAbrirGanar={onAbrirGanar}
+                  onAbrirCerrarAbastecimiento={onAbrirCerrarAbastecimiento}
+                  onVerDetalleCiclo={onVerDetalleCiclo}
+                  onCancelarCiclo={onCancelarCiclo}
+                />
+
+                {/* Si está en abastecimiento y ya se compró, botón para foto final */}
+                {cicloActivo.tipo === 'ABASTECIMIENTO' && cicloActivo.estado === 'EN_PROCESO' && (
+                  <button
+                    onClick={onAbrirCerrarAbastecimiento}
+                    className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-4.5 rounded-3xl shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                        <Camera className="w-7 h-7 stroke-[2.3]" />
+                      </div>
+                      <div>
+                        <span className="text-lg font-black tracking-tight block">
+                          FOTO DESPUÉS (CERRAR)
+                        </span>
+                        <span className="text-xs text-emerald-100 font-medium">
+                          📸 Subir vitrina llena y finalizar abasto
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* AVISO CUANDO NO HAY CICLO ACTIVO */
+              <div className="bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-pink-50/80 border border-indigo-200/70 rounded-3xl p-4 text-center shadow-xs space-y-3">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100/80 px-3 py-1 rounded-full">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  Ruta Auditada de Máquina
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">
+                    Inicia un ciclo antes de operar
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto">
+                    Toma la <span className="font-bold text-slate-800">Foto ANTES</span> para registrar compras o ganancias.
+                  </p>
+                </div>
+
+                <button
+                  onClick={onAbrirIniciarCiclo}
+                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 text-white p-4 rounded-2xl shadow-md shadow-indigo-200/50 hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-indigo-400/30"
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-base font-black tracking-tight block">
+                        INICIAR CICLO
+                      </span>
+                      <span className="text-[11px] text-indigo-100 font-medium">
+                        Foto Antes + Elegir Ruta
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* Sección de BOTONES DE ACCIÓN RÁPIDA CON CONTROL DE ETAPA */}
             <div className="space-y-2.5 my-auto">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                ¿Qué deseas registrar ahora?
+                {cicloActivo
+                  ? `Etapa activa: Ruta de ${cicloActivo.tipo === 'ABASTECIMIENTO' ? 'Abastecimiento' : 'Ganancia'}`
+                  : 'Acciones del Sistema'}
               </p>
 
               {/* BOTÓN 1: GANAR (RECAUDACIÓN) */}
               {permisos.puede_ganar && (
-                <button
-                  onClick={onAbrirGanar}
-                  className="w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-emerald-200/50 hover:shadow-lg hover:shadow-emerald-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
-                >
-                  <div className="flex items-center gap-3.5 text-left">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                      <TrendingUp className="w-7 h-7 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <span className="text-xl sm:text-2xl font-black tracking-tight block">
-                        GANAR
-                      </span>
-                      <span className="text-xs text-emerald-100 font-medium">
-                        Registrar recaudación retirada
-                      </span>
+                cicloActivo?.tipo === 'ABASTECIMIENTO' ? (
+                  /* BLOQUEADO: Ciclo actual es de Abastecimiento */
+                  <div
+                    className="w-full bg-slate-100 text-slate-400 p-4 sm:p-5 rounded-3xl border border-slate-200 flex items-center justify-between cursor-not-allowed opacity-75"
+                    title="Inhabilitado: Este ciclo es de Abastecimiento. No se puede ganar dinero."
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl sm:text-2xl font-black tracking-tight block text-slate-400">
+                            GANAR
+                          </span>
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            Bloqueado en Abastecimiento
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium">
+                          Ruta exclusiva para compras de productos
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
+                ) : (
+                  /* HABILITADO */
+                  <button
+                    onClick={cicloActivo ? onAbrirGanar : onAbrirIniciarCiclo}
+                    className="w-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-emerald-200/50 hover:shadow-lg hover:shadow-emerald-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                        <TrendingUp className="w-7 h-7 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <span className="text-xl sm:text-2xl font-black tracking-tight block">
+                          GANAR
+                        </span>
+                        <span className="text-xs text-emerald-100 font-medium">
+                          {cicloActivo
+                            ? 'Registrar recaudación retirada del ciclo'
+                            : 'Iniciar ciclo y registrar ganancia'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                )
               )}
 
               {/* BOTÓN 2: COMPRAR (MERCADERÍA) */}
               {permisos.puede_comprar && (
-                <button
-                  onClick={onAbrirComprar}
-                  className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-amber-200/50 hover:shadow-lg hover:shadow-amber-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-amber-400/30"
-                >
-                  <div className="flex items-center gap-3.5 text-left">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                      <ShoppingBag className="w-7 h-7 stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <span className="text-xl sm:text-2xl font-black tracking-tight block">
-                        COMPRAR
-                      </span>
-                      <span className="text-xs text-amber-100 font-medium">
-                        Registrar compra de productos
-                      </span>
+                cicloActivo?.tipo === 'GANANCIA' ? (
+                  /* BLOQUEADO: Ciclo actual es de Ganancia */
+                  <div
+                    className="w-full bg-slate-100 text-slate-400 p-4 sm:p-5 rounded-3xl border border-slate-200 flex items-center justify-between cursor-not-allowed opacity-75"
+                    title="Inhabilitado: Este ciclo es de Ganancia. No se pueden comprar productos."
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl sm:text-2xl font-black tracking-tight block text-slate-400">
+                            COMPRAR
+                          </span>
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            Bloqueado en Ganancia
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium">
+                          Ruta exclusiva para retiro y reparto de recaudación
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </button>
+                ) : (
+                  /* HABILITADO */
+                  <button
+                    onClick={cicloActivo ? onAbrirComprar : onAbrirIniciarCiclo}
+                    className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-amber-200/50 hover:shadow-lg hover:shadow-amber-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-amber-400/30"
+                  >
+                    <div className="flex items-center gap-3.5 text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                        <ShoppingBag className="w-7 h-7 stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <span className="text-xl sm:text-2xl font-black tracking-tight block">
+                          COMPRAR
+                        </span>
+                        <span className="text-xs text-amber-100 font-medium">
+                          {cicloActivo
+                            ? 'Registrar compra de productos del ciclo'
+                            : 'Iniciar ciclo y registrar compra'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                )
               )}
 
-              {/* BOTÓN 3: FOTO DE LA MÁQUINA */}
+              {/* BOTÓN 3: FOTO DE LA MÁQUINA / GESTIÓN DE CICLO */}
               {permisos.puede_foto_maquina && (
                 <button
-                  onClick={onAbrirFotoMaquina}
+                  onClick={cicloActivo ? onAbrirFotoMaquina : onAbrirIniciarCiclo}
                   className="w-full bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-cyan-200/50 hover:shadow-lg hover:shadow-cyan-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-cyan-400/30"
                 >
                   <div className="flex items-center gap-3.5 text-left">
@@ -397,10 +593,12 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                     </div>
                     <div>
                       <span className="text-xl sm:text-2xl font-black tracking-tight block">
-                        FOTO DE LA MÁQUINA
+                        {cicloActivo ? 'FOTO DE LA MÁQUINA' : 'FOTO ANTES / CICLO'}
                       </span>
                       <span className="text-xs text-cyan-100 font-medium">
-                        Antes o después del abasto
+                        {cicloActivo
+                          ? 'Auditar estado o subir evidencia'
+                          : 'Tomar foto inicial para nuevo ciclo'}
                       </span>
                     </div>
                   </div>

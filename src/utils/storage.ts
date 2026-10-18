@@ -1,4 +1,5 @@
 import type {
+  CicloMaquina,
   ConfigReparto,
   FotoMaquina,
   Movimiento,
@@ -17,6 +18,7 @@ const STORAGE_KEYS = {
   ROLES: 'vending_finanzas_roles_v1',
   SESION_USUARIO: 'vending_finanzas_sesion_v1',
   FOTOS_MAQUINA: 'vending_finanzas_fotos_maquina_v1',
+  CICLOS: 'vending_finanzas_ciclos_v1',
 }
 
 export const PROVEEDORES_DEFAULT = ['Makro', 'Vega', 'Metro', 'Mass', 'Mayorista']
@@ -329,6 +331,44 @@ export const StorageService = {
     const fotos = this.getFotosMaquina()
     fotos.unshift(foto)
     this.saveFotosMaquina(fotos)
+  },
+
+  // Gestión de Ciclos / Journeys de Operación
+  getCiclos(): CicloMaquina[] {
+    const raw = localStorage.getItem(STORAGE_KEYS.CICLOS)
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  },
+
+  saveCiclos(ciclos: CicloMaquina[]): void {
+    localStorage.setItem(STORAGE_KEYS.CICLOS, JSON.stringify(ciclos))
+  },
+
+  addCiclo(ciclo: CicloMaquina): void {
+    const ciclos = this.getCiclos()
+    ciclos.unshift(ciclo)
+    this.saveCiclos(ciclos)
+  },
+
+  updateCiclo(actualizado: CicloMaquina): void {
+    const ciclos = this.getCiclos()
+    const index = ciclos.findIndex((c) => c.id === actualizado.id)
+    if (index >= 0) {
+      ciclos[index] = actualizado
+    } else {
+      ciclos.unshift(actualizado)
+    }
+    this.saveCiclos(ciclos)
+  },
+
+  getCicloActivo(): CicloMaquina | null {
+    const ciclos = this.getCiclos()
+    return ciclos.find((c) => c.estado !== 'CERRADO') || null
   },
 
   getConfigRepartos(): ConfigReparto[] {

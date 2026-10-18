@@ -15,13 +15,14 @@ import {
   Camera,
   LogOut,
   Bell,
+  Sparkles,
 } from 'lucide-react'
 import type { Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
 
 interface NavbarProps {
-  vistaActual: 'dashboard' | 'movimientos' | 'participantes' | 'config' | 'cierre'
-  setVistaActual: (v: 'dashboard' | 'movimientos' | 'participantes' | 'config' | 'cierre') => void
+  vistaActual: 'dashboard' | 'movimientos' | 'ciclos' | 'participantes' | 'config' | 'cierre'
+  setVistaActual: (v: 'dashboard' | 'movimientos' | 'ciclos' | 'participantes' | 'config' | 'cierre') => void
   saldoCaja: number
   conectadoSupabase: boolean
   usuarioActual: Participante
@@ -67,6 +68,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: 'Movimientos',
       icon: ReceiptText,
       visible: permisos.puede_ver_movimientos,
+    },
+    {
+      id: 'ciclos' as const,
+      label: 'Ciclos de Máquina',
+      icon: Sparkles,
+      visible: permisos.puede_ver_movimientos || permisos.puede_foto_maquina,
     },
     {
       id: 'cierre' as const,
