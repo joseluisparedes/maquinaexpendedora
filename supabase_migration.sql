@@ -109,3 +109,35 @@ VALUES
     ]'::jsonb
   )
 ON CONFLICT (id) DO NOTHING;
+
+-- 8. Ciclos de Máquina (Journeys de Abastecimiento y Ganancia)
+CREATE TABLE IF NOT EXISTS public.vending_ciclos (
+  id TEXT PRIMARY KEY,
+  codigo TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ABASTECIMIENTO', 'GANANCIA')),
+  estado TEXT NOT NULL CHECK (estado IN ('INICIADO', 'EN_PROCESO', 'CERRADO')),
+  etapa_actual TEXT NOT NULL,
+  fecha_inicio DATE NOT NULL,
+  hora_inicio TEXT NOT NULL,
+  iniciado_por TEXT REFERENCES public.vending_participantes(id) ON DELETE SET NULL,
+  iniciado_por_nombre TEXT,
+  foto_antes_url TEXT NOT NULL,
+  fotos_antes_urls JSONB,
+  observaciones_antes TEXT,
+  foto_despues_url TEXT,
+  fotos_despues_urls JSONB,
+  observaciones_despues TEXT,
+  fecha_despues DATE,
+  hora_despues TEXT,
+  cerrado_por TEXT REFERENCES public.vending_participantes(id) ON DELETE SET NULL,
+  cerrado_por_nombre TEXT,
+  movimiento_ids JSONB,
+  monto_involucrado NUMERIC(12, 2),
+  creado_el TIMESTAMPTZ DEFAULT now(),
+  actualizado_el TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.vending_ciclos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir todo a vending_ciclos" ON public.vending_ciclos;
+CREATE POLICY "Permitir todo a vending_ciclos" ON public.vending_ciclos FOR ALL USING (true) WITH CHECK (true);
+

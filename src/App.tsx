@@ -174,16 +174,18 @@ export function App() {
     setModoAdmin(false)
   }
 
-  // Iniciar un nuevo ciclo con Foto ANTES obligatoria y selección de ruta
+  // Iniciar un nuevo ciclo con Foto(s) ANTES obligatoria y selección de ruta
   const handleIniciarCiclo = async (datos: {
     tipo: TipoCiclo
     fotoAntes: string
+    fotosAntes?: string[]
     observaciones?: string
   }) => {
     const ahora = new Date()
     const fecha = ahora.toISOString().split('T')[0]
     const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     const correlativo = (ciclos.length + 1).toString().padStart(3, '0')
+    const listaFotosAntes = datos.fotosAntes && datos.fotosAntes.length > 0 ? datos.fotosAntes : [datos.fotoAntes]
 
     const nuevoCiclo: CicloMaquina = {
       id: `ciclo-${Date.now()}`,
@@ -195,6 +197,7 @@ export function App() {
       iniciado_por: usuarioActual?.id || '',
       iniciado_por_nombre: usuarioActual?.nombre || '',
       foto_antes_url: datos.fotoAntes,
+      fotos_antes_urls: listaFotosAntes,
       observaciones_antes: datos.observaciones,
       etapa_actual:
         datos.tipo === 'ABASTECIMIENTO'
@@ -208,33 +211,38 @@ export function App() {
     await DataService.saveCiclo(nuevoCiclo)
     setCiclos((prev) => [nuevoCiclo, ...prev])
 
-    // Registrar en histórico de fotos de la máquina
-    const nuevaFoto: FotoMaquina = {
-      id: `foto-${Date.now()}`,
+    // Registrar en histórico de fotos de la máquina todas las fotos iniciales
+    const nuevasFotosHistorico: FotoMaquina[] = listaFotosAntes.map((fUrl, idx) => ({
+      id: `foto-${Date.now()}-${idx}`,
       tipo: 'ANTES',
       fecha: fecha,
       hora: hora,
-      foto_url: datos.fotoAntes,
+      foto_url: fUrl,
       registrado_por: usuarioActual?.id || '',
-      observaciones: `Foto inicial del Ciclo de ${
+      observaciones: `Foto ${idx + 1}/${listaFotosAntes.length} del Ciclo de ${
         datos.tipo === 'ABASTECIMIENTO' ? 'Abastecimiento' : 'Ganancia'
       }${datos.observaciones ? `: ${datos.observaciones}` : ''}`,
       ciclo_id: nuevoCiclo.id,
       creado_el: ahora.toISOString(),
+    }))
+
+    for (const nf of nuevasFotosHistorico) {
+      await DataService.saveFotoMaquina(nf)
     }
-    await DataService.saveFotoMaquina(nuevaFoto)
-    setFotosMaquina((prev) => [nuevaFoto, ...prev])
+    setFotosMaquina((prev) => [...nuevasFotosHistorico, ...prev])
   }
 
-  // Cerrar ciclo de abastecimiento con Foto DESPUÉS
+  // Cerrar ciclo de abastecimiento con Foto(s) DESPUÉS
   const handleCerrarAbastecimiento = async (datos: {
     fotoDespues: string
+    fotosDespues?: string[]
     observaciones?: string
   }) => {
     if (!cicloActivo) return
     const ahora = new Date()
     const fecha = ahora.toISOString().split('T')[0]
     const hora = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const listaFotosDespues = datos.fotosDespues && datos.fotosDespues.length > 0 ? datos.fotosDespues : [datos.fotoDespues]
 
     const cicloCerrado: CicloMaquina = {
       ...cicloActivo,
@@ -244,6 +252,7 @@ export function App() {
       cerrado_por: usuarioActual?.id || '',
       cerrado_por_nombre: usuarioActual?.nombre || '',
       foto_despues_url: datos.fotoDespues,
+      fotos_despues_urls: listaFotosDespues,
       observaciones_despues: datos.observaciones,
       etapa_actual: 'Ciclo cerrado - Máquina abastecida y vitrina auditada',
       actualizado_el: ahora.toISOString(),
@@ -252,22 +261,25 @@ export function App() {
     await DataService.updateCiclo(cicloCerrado)
     setCiclos((prev) => prev.map((c) => (c.id === cicloCerrado.id ? cicloCerrado : c)))
 
-    // Registrar foto después en histórico
-    const nuevaFoto: FotoMaquina = {
-      id: `foto-${Date.now()}`,
+    // Registrar en histórico de fotos todas las fotos de cierre
+    const nuevasFotosHistorico: FotoMaquina[] = listaFotosDespues.map((fUrl, idx) => ({
+      id: `foto-${Date.now()}-${idx}`,
       tipo: 'DESPUES',
       fecha: fecha,
       hora: hora,
-      foto_url: datos.fotoDespues,
+      foto_url: fUrl,
       registrado_por: usuarioActual?.id || '',
-      observaciones: `Foto final de cierre de abastecimiento${
+      observaciones: `Foto final ${idx + 1}/${listaFotosDespues.length} de cierre de abastecimiento${
         datos.observaciones ? `: ${datos.observaciones}` : ''
       }`,
       ciclo_id: cicloActivo.id,
       creado_el: ahora.toISOString(),
+    }))
+
+    for (const nf of nuevasFotosHistorico) {
+      await DataService.saveFotoMaquina(nf)
     }
-    await DataService.saveFotoMaquina(nuevaFoto)
-    setFotosMaquina((prev) => [nuevaFoto, ...prev])
+    setFotosMaquina((prev) => [...nuevasFotosHistorico, ...prev])
   }
 
   // Cancelar ciclo activo manualmente

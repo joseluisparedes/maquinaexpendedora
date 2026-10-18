@@ -23,6 +23,7 @@ interface IniciarCicloModalProps {
   onIniciarCiclo: (datos: {
     tipo: TipoCiclo
     fotoAntes: string
+    fotosAntes?: string[]
     observaciones?: string
   }) => Promise<void>
 }
@@ -34,7 +35,8 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
   onIniciarCiclo,
 }) => {
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoCiclo>('ABASTECIMIENTO')
-  const [fotoAntes, setFotoAntes] = useState<string | null>(null)
+  const [fotosAntes, setFotosAntes] = useState<string[]>([])
+  const [fotoActivaIndex, setFotoActivaIndex] = useState(0)
   const [observaciones, setObservaciones] = useState('')
   const [procesandoFoto, setProcesandoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -46,28 +48,47 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
 
   if (!isOpen) return null
 
-  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleArchivosSeleccionados = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     setErrorValidacion(null)
     setProcesandoFoto(true)
     try {
-      const dataUrl = await comprimirImagen(file)
-      setFotoAntes(dataUrl)
+      const nuevasFotos: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        const dataUrl = await comprimirImagen(files[i])
+        nuevasFotos.push(dataUrl)
+      }
+      setFotosAntes((prev) => {
+        const actualizadas = [...prev, ...nuevasFotos]
+        return actualizadas
+      })
+      // Ajustar foto activa al primer nuevo elemento
+      setFotoActivaIndex(fotosAntes.length)
     } catch {
-      setErrorValidacion('Error procesando la imagen. Intenta con otra foto.')
+      setErrorValidacion('Error procesando las imágenes. Intenta con otra foto.')
     } finally {
       setProcesandoFoto(false)
       if (e.target) e.target.value = ''
     }
   }
 
+  const handleEliminarFoto = (idxAEliminar: number) => {
+    setFotosAntes((prev) => {
+      const nuevas = prev.filter((_, idx) => idx !== idxAEliminar)
+      if (fotoActivaIndex >= nuevas.length) {
+        setFotoActivaIndex(Math.max(0, nuevas.length - 1))
+      }
+      return nuevas
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorValidacion(null)
-    if (!fotoAntes) {
-      setErrorValidacion('Es obligatorio tomar la foto ANTES para iniciar cualquier ciclo de máquina.')
+    if (fotosAntes.length === 0) {
+      setErrorValidacion('Es obligatorio tomar al menos una foto ANTES para iniciar cualquier ciclo de máquina.')
       return
     }
 
@@ -75,7 +96,8 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
     try {
       await onIniciarCiclo({
         tipo: tipoSeleccionado,
-        fotoAntes,
+        fotoAntes: fotosAntes[0],
+        fotosAntes: fotosAntes,
         observaciones: observaciones.trim() || undefined,
       })
       onClose()
@@ -85,6 +107,8 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
       setGuardando(false)
     }
   }
+
+  const fotoPrincipal = fotosAntes[fotoActivaIndex] || fotosAntes[0]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
@@ -101,7 +125,7 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
                 Iniciar Ciclo de Máquina
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Iniciado por {usuarioActual.nombre} • Foto ANTES obligatoria
+                Iniciado por {usuarioActual.nombre} • Auditoría fotográfica inicial
               </p>
             </div>
           </div>
@@ -122,23 +146,23 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
             </div>
           )}
 
-          {/* PASO 1: FOTO ANTES (OBLIGATORIA) */}
-          <div className="space-y-2">
+          {/* PASO 1: FOTO(S) ANTES (OBLIGATORIA - SOPORTA MÚLTIPLES) */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">
                   1
                 </span>
-                Foto ANTES de tocar la máquina (Obligatoria):
+                Foto(s) ANTES de tocar la máquina:
               </label>
-              {fotoAntes && (
-                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" /> Foto lista
+              {fotosAntes.length > 0 && (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" /> {fotosAntes.length} foto{fotosAntes.length > 1 ? 's' : ''} lista{fotosAntes.length > 1 ? 's' : ''}
                 </span>
               )}
             </div>
             <p className="text-[11px] text-slate-500">
-              Registra cómo se encuentra la vitrina antes de abrir o retirar dinero.
+              Registra el estado de la vitrina, espirales y monedas antes de abrir. Puedes agregar más de una foto.
             </p>
 
             <input
@@ -146,18 +170,19 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={handleArchivoSeleccionado}
+              onChange={handleArchivosSeleccionados}
               className="hidden"
             />
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={handleArchivoSeleccionado}
+              multiple
+              onChange={handleArchivosSeleccionados}
               className="hidden"
             />
 
-            {!fotoAntes ? (
+            {fotosAntes.length === 0 ? (
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   type="button"
@@ -166,7 +191,7 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
                   className="py-4 px-3 bg-gradient-to-br from-indigo-50 to-indigo-100/80 hover:from-indigo-100 hover:to-indigo-200 text-indigo-900 border border-indigo-200 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   <Camera className="w-6 h-6 text-indigo-600 stroke-[2.3]" />
-                  <span>Tomar Foto con Cámara</span>
+                  <span>Tomar con Cámara</span>
                 </button>
 
                 <button
@@ -176,30 +201,81 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
                   className="py-4 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   <Upload className="w-6 h-6 text-slate-600 stroke-[2.3]" />
-                  <span>Subir desde Galería</span>
+                  <span>Subir de Galería (1 o varias)</span>
                 </button>
               </div>
             ) : (
-              <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-200 bg-slate-900 aspect-video flex items-center justify-center group">
-                <img
-                  src={fotoAntes}
-                  alt="Foto Antes de la máquina"
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+              <div className="space-y-2.5">
+                {/* Visualizador de la foto activa */}
+                <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-200 bg-slate-900 aspect-video flex items-center justify-center group">
+                  <img
+                    src={fotoPrincipal}
+                    alt={`Foto Antes ${fotoActivaIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-2 left-2 bg-slate-950/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1">
+                    <span>Foto {fotoActivaIndex + 1} de {fotosAntes.length}</span>
+                    {fotoActivaIndex === 0 && <span className="text-amber-400 font-extrabold">• Portada</span>}
+                  </div>
+                  <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFotoZoom(fotoPrincipal)}
+                      className="p-2 bg-white text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-100"
+                    >
+                      <Eye className="w-4 h-4" /> Ver ampliada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarFoto(fotoActivaIndex)}
+                      className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-rose-700"
+                    >
+                      <Trash2 className="w-4 h-4" /> Eliminar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tira de Miniaturas y Botones de Agregar Más */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+                  {fotosAntes.map((foto, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setFotoActivaIndex(idx)}
+                      className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                        idx === fotoActivaIndex
+                          ? 'border-indigo-600 ring-2 ring-indigo-300 scale-105'
+                          : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={foto} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 right-0 bg-slate-900/80 text-white text-[9px] px-1 font-bold rounded-tl">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Botón rápido para tomar otra con cámara */}
                   <button
                     type="button"
-                    onClick={() => setFotoZoom(fotoAntes)}
-                    className="p-2 bg-white text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-100"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={procesandoFoto}
+                    className="w-14 h-14 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/60 hover:bg-indigo-100/60 flex flex-col items-center justify-center text-indigo-700 shrink-0 cursor-pointer transition-colors"
+                    title="Tomar otra foto con cámara"
                   >
-                    <Eye className="w-4 h-4" /> Ver
+                    <Camera className="w-4 h-4" />
+                    <span className="text-[9px] font-bold mt-0.5">+Cámara</span>
                   </button>
+
+                  {/* Botón rápido para subir más de galería */}
                   <button
                     type="button"
-                    onClick={() => setFotoAntes(null)}
-                    className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-rose-700"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={procesandoFoto}
+                    className="w-14 h-14 rounded-xl border border-dashed border-slate-300 hover:border-slate-500 bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center text-slate-700 shrink-0 cursor-pointer transition-colors"
+                    title="Subir más de galería"
                   >
-                    <Trash2 className="w-4 h-4" /> Cambiar foto
+                    <Upload className="w-4 h-4" />
+                    <span className="text-[9px] font-bold mt-0.5">+Galería</span>
                   </button>
                 </div>
               </div>
@@ -311,7 +387,7 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
 
             <button
               type="submit"
-              disabled={guardando || !fotoAntes || procesandoFoto}
+              disabled={guardando || fotosAntes.length === 0 || procesandoFoto}
               className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-black text-xs rounded-xl shadow-xs transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
             >
               {guardando ? (

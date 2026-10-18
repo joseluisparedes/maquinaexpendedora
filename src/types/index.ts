@@ -53,12 +53,14 @@ export interface CicloMaquina {
   iniciado_por: string // participante_id
   iniciado_por_nombre?: string
 
-  // Foto ANTES (Obligatoria para iniciar)
+  // Foto ANTES (Obligatoria para iniciar - soporta múltiples multimedia)
   foto_antes_url: string
+  fotos_antes_urls?: string[]
   observaciones_antes?: string
 
-  // Foto DESPUÉS (Obligatoria para cerrar abastecimiento)
+  // Foto DESPUÉS (Obligatoria para cerrar abastecimiento - soporta múltiples multimedia)
   foto_despues_url?: string
+  fotos_despues_urls?: string[]
   observaciones_despues?: string
   fecha_despues?: string
   hora_despues?: string

@@ -24,6 +24,7 @@ interface CerrarAbastecimientoModalProps {
   usuarioActual: Participante
   onCerrarAbastecimiento: (datos: {
     fotoDespues: string
+    fotosDespues?: string[]
     observaciones?: string
   }) => Promise<void>
 }
@@ -36,7 +37,8 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
   usuarioActual,
   onCerrarAbastecimiento,
 }) => {
-  const [fotoDespues, setFotoDespues] = useState<string | null>(null)
+  const [fotosDespues, setFotosDespues] = useState<string[]>([])
+  const [fotoActivaIndex, setFotoActivaIndex] = useState(0)
   const [observaciones, setObservaciones] = useState('')
   const [procesandoFoto, setProcesandoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -48,35 +50,51 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
 
   if (!isOpen || !ciclo) return null
 
-  const handleArchivoSeleccionado = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleArchivosSeleccionados = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     setErrorValidacion(null)
     setProcesandoFoto(true)
     try {
-      const dataUrl = await comprimirImagen(file)
-      setFotoDespues(dataUrl)
+      const nuevasFotos: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        const dataUrl = await comprimirImagen(files[i])
+        nuevasFotos.push(dataUrl)
+      }
+      setFotosDespues((prev) => [...prev, ...nuevasFotos])
+      setFotoActivaIndex(fotosDespues.length)
     } catch {
-      setErrorValidacion('Error procesando la imagen. Intenta con otra foto.')
+      setErrorValidacion('Error procesando las imágenes. Intenta con otra foto.')
     } finally {
       setProcesandoFoto(false)
       if (e.target) e.target.value = ''
     }
   }
 
+  const handleEliminarFoto = (idxAEliminar: number) => {
+    setFotosDespues((prev) => {
+      const nuevas = prev.filter((_, idx) => idx !== idxAEliminar)
+      if (fotoActivaIndex >= nuevas.length) {
+        setFotoActivaIndex(Math.max(0, nuevas.length - 1))
+      }
+      return nuevas
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorValidacion(null)
-    if (!fotoDespues) {
-      setErrorValidacion('Debes tomar o subir la foto de la máquina abastecida para cerrar el ciclo.')
+    if (fotosDespues.length === 0) {
+      setErrorValidacion('Debes tomar o subir al menos una foto de la máquina abastecida para cerrar el ciclo.')
       return
     }
 
     setGuardando(true)
     try {
       await onCerrarAbastecimiento({
-        fotoDespues,
+        fotoDespues: fotosDespues[0],
+        fotosDespues: fotosDespues,
         observaciones: observaciones.trim() || undefined,
       })
       onClose()
@@ -86,6 +104,8 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
       setGuardando(false)
     }
   }
+
+  const fotoPrincipal = fotosDespues[fotoActivaIndex] || fotosDespues[0]
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
@@ -102,7 +122,7 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
                 Cerrar Ciclo de Abastecimiento
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Registrado por {usuarioActual.nombre} • Vitrina llena y auditada
+                Registrado por {usuarioActual.nombre} • Vitrina abastecida y auditada
               </p>
             </div>
           </div>
@@ -147,21 +167,21 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
             </div>
           )}
 
-          {/* FOTO DESPUÉS (OBLIGATORIA) */}
-          <div className="space-y-2">
+          {/* FOTO(S) DESPUÉS (OBLIGATORIA - SOPORTA MÚLTIPLES) */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-emerald-600" />
-                Foto DESPUÉS de abastecer (Obligatoria):
+                Foto(s) DESPUÉS de abastecer:
               </label>
-              {fotoDespues && (
-                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" /> Foto lista
+              {fotosDespues.length > 0 && (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" /> {fotosDespues.length} foto{fotosDespues.length > 1 ? 's' : ''} lista{fotosDespues.length > 1 ? 's' : ''}
                 </span>
               )}
             </div>
             <p className="text-[11px] text-slate-500">
-              Muestra cómo quedó la máquina completamente abastecida y ordenada.
+              Muestra cómo quedó la vitrina abastecida y ordenada. Puedes agregar más de una foto.
             </p>
 
             <input
@@ -169,18 +189,19 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={handleArchivoSeleccionado}
+              onChange={handleArchivosSeleccionados}
               className="hidden"
             />
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              onChange={handleArchivoSeleccionado}
+              multiple
+              onChange={handleArchivosSeleccionados}
               className="hidden"
             />
 
-            {!fotoDespues ? (
+            {fotosDespues.length === 0 ? (
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   type="button"
@@ -189,7 +210,7 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
                   className="py-4 px-3 bg-gradient-to-br from-emerald-50 to-teal-100/80 hover:from-emerald-100 hover:to-teal-200 text-emerald-950 border border-emerald-300 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   <Camera className="w-6 h-6 text-emerald-700 stroke-[2.3]" />
-                  <span>Tomar Foto con Cámara</span>
+                  <span>Tomar con Cámara</span>
                 </button>
 
                 <button
@@ -199,30 +220,81 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
                   className="py-4 px-3 bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-2xl font-bold text-xs flex flex-col items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   <Upload className="w-6 h-6 text-slate-600 stroke-[2.3]" />
-                  <span>Subir desde Galería</span>
+                  <span>Subir de Galería (1 o varias)</span>
                 </button>
               </div>
             ) : (
-              <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-300 bg-slate-900 aspect-video flex items-center justify-center group">
-                <img
-                  src={fotoDespues}
-                  alt="Foto Después de la máquina"
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+              <div className="space-y-2.5">
+                {/* Visualizador de la foto activa */}
+                <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-300 bg-slate-900 aspect-video flex items-center justify-center group">
+                  <img
+                    src={fotoPrincipal}
+                    alt={`Foto Después ${fotoActivaIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-2 left-2 bg-slate-950/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1">
+                    <span>Foto {fotoActivaIndex + 1} de {fotosDespues.length}</span>
+                    {fotoActivaIndex === 0 && <span className="text-emerald-400 font-extrabold">• Portada</span>}
+                  </div>
+                  <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFotoZoom(fotoPrincipal)}
+                      className="p-2 bg-white text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-100"
+                    >
+                      <Eye className="w-4 h-4" /> Ver ampliada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEliminarFoto(fotoActivaIndex)}
+                      className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-rose-700"
+                    >
+                      <Trash2 className="w-4 h-4" /> Eliminar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tira de Miniaturas y Botones de Agregar Más */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+                  {fotosDespues.map((foto, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setFotoActivaIndex(idx)}
+                      className={`relative w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                        idx === fotoActivaIndex
+                          ? 'border-emerald-600 ring-2 ring-emerald-300 scale-105'
+                          : 'border-slate-200 hover:border-slate-300 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={foto} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 right-0 bg-slate-900/80 text-white text-[9px] px-1 font-bold rounded-tl">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Botón rápido para tomar otra con cámara */}
                   <button
                     type="button"
-                    onClick={() => setFotoZoom(fotoDespues)}
-                    className="p-2 bg-white text-slate-900 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-slate-100"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={procesandoFoto}
+                    className="w-14 h-14 rounded-xl border border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/60 hover:bg-emerald-100/60 flex flex-col items-center justify-center text-emerald-800 shrink-0 cursor-pointer transition-colors"
+                    title="Tomar otra foto con cámara"
                   >
-                    <Eye className="w-4 h-4" /> Ver
+                    <Camera className="w-4 h-4" />
+                    <span className="text-[9px] font-bold mt-0.5">+Cámara</span>
                   </button>
+
+                  {/* Botón rápido para subir más de galería */}
                   <button
                     type="button"
-                    onClick={() => setFotoDespues(null)}
-                    className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-rose-700"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={procesandoFoto}
+                    className="w-14 h-14 rounded-xl border border-dashed border-slate-300 hover:border-slate-500 bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center text-slate-700 shrink-0 cursor-pointer transition-colors"
+                    title="Subir más de galería"
                   >
-                    <Trash2 className="w-4 h-4" /> Cambiar foto
+                    <Upload className="w-4 h-4" />
+                    <span className="text-[9px] font-bold mt-0.5">+Galería</span>
                   </button>
                 </div>
               </div>
@@ -264,7 +336,7 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
 
             <button
               type="submit"
-              disabled={guardando || !fotoDespues || procesandoFoto}
+              disabled={guardando || fotosDespues.length === 0 || procesandoFoto}
               className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-xl shadow-xs transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
             >
               {guardando ? (

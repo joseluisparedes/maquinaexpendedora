@@ -351,7 +351,22 @@ export const StorageService = {
     if (!raw) return []
     try {
       const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed : []
+      if (!Array.isArray(parsed)) return []
+      return parsed.map((c: CicloMaquina) => ({
+        ...c,
+        fotos_antes_urls:
+          c.fotos_antes_urls && c.fotos_antes_urls.length > 0
+            ? c.fotos_antes_urls
+            : c.foto_antes_url
+            ? [c.foto_antes_url]
+            : [],
+        fotos_despues_urls:
+          c.fotos_despues_urls && c.fotos_despues_urls.length > 0
+            ? c.fotos_despues_urls
+            : c.foto_despues_url
+            ? [c.foto_despues_url]
+            : undefined,
+      }))
     } catch {
       return []
     }

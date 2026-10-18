@@ -7,6 +7,9 @@ import {
   Eye,
   XCircle,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -29,7 +32,11 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
   onVerDetalleCiclo,
   onCancelarCiclo,
 }) => {
-  const [fotoZoom, setFotoZoom] = useState<string | null>(null)
+  const [zoomModal, setZoomModal] = useState<{
+    fotos: string[]
+    indice: number
+    titulo: string
+  } | null>(null)
   const esAdmin = usuarioActual.rol === 'Administrador'
 
   if (!ciclo || ciclo.estado === 'CERRADO') return null
@@ -40,6 +47,20 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
     : null
 
   const tieneCompraRegistrada = esAbastecimiento && Boolean(movVinculado || ciclo.estado === 'EN_PROCESO')
+
+  const fotosAntes =
+    ciclo.fotos_antes_urls && ciclo.fotos_antes_urls.length > 0
+      ? ciclo.fotos_antes_urls
+      : ciclo.foto_antes_url
+      ? [ciclo.foto_antes_url]
+      : []
+
+  const fotosDespues =
+    ciclo.fotos_despues_urls && ciclo.fotos_despues_urls.length > 0
+      ? ciclo.fotos_despues_urls
+      : ciclo.foto_despues_url
+      ? [ciclo.foto_despues_url]
+      : []
 
   return (
     <div className="bg-gradient-to-br from-white to-slate-50 border-2 border-indigo-200 rounded-3xl p-4 sm:p-5 shadow-md relative overflow-hidden space-y-4">
@@ -140,15 +161,26 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
               </div>
               <p className="font-bold leading-tight text-[11px]">Foto Antes</p>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-[9px] text-emerald-700">Auditado</span>
-                {ciclo.foto_antes_url && (
+                <span className="text-[9px] text-emerald-700 font-bold">
+                  {fotosAntes.length > 1 ? `${fotosAntes.length} fotos` : 'Auditado'}
+                </span>
+                {fotosAntes.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setFotoZoom(ciclo.foto_antes_url)}
-                    className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer"
-                    title="Ver foto antes"
+                    onClick={() =>
+                      setZoomModal({
+                        fotos: fotosAntes,
+                        indice: 0,
+                        titulo: `Fotos ANTES de máquina (${fotosAntes.length})`,
+                      })
+                    }
+                    className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer flex items-center gap-0.5"
+                    title="Ver fotos antes"
                   >
                     <Eye className="w-3 h-3" />
+                    {fotosAntes.length > 1 && (
+                      <span className="text-[9px] font-black">{fotosAntes.length}</span>
+                    )}
                   </button>
                 )}
               </div>
@@ -173,7 +205,7 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
                 )}
               </div>
               <p className="font-bold leading-tight text-[11px]">Compra</p>
-              <span className="text-[9px] mt-1">
+              <span className="text-[9px] mt-1 font-semibold">
                 {tieneCompraRegistrada
                   ? movVinculado
                     ? formatearMoneda(movVinculado.total_gastado || 0)
@@ -185,7 +217,7 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
             {/* Paso 3: Foto Después y Cierre */}
             <div
               className={`p-2.5 rounded-2xl border flex flex-col justify-between transition-colors ${
-                ciclo.foto_despues_url
+                fotosDespues.length > 0
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
                   : tieneCompraRegistrada
                   ? 'bg-indigo-50 border-indigo-300 text-indigo-950'
@@ -196,16 +228,41 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
                 <span className="text-[10px] font-black uppercase tracking-wider">
                   Paso 3
                 </span>
-                {ciclo.foto_despues_url ? (
+                {fotosDespues.length > 0 ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 ) : (
                   <Clock className="w-4 h-4" />
                 )}
               </div>
               <p className="font-bold leading-tight text-[11px]">Foto Después</p>
-              <span className="text-[9px] mt-1">
-                {ciclo.foto_despues_url ? 'Completado' : 'Pendiente'}
-              </span>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-[9px] font-semibold">
+                  {fotosDespues.length > 0
+                    ? fotosDespues.length > 1
+                      ? `${fotosDespues.length} fotos`
+                      : 'Auditado'
+                    : 'Pendiente'}
+                </span>
+                {fotosDespues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomModal({
+                        fotos: fotosDespues,
+                        indice: 0,
+                        titulo: `Fotos DESPUÉS de máquina (${fotosDespues.length})`,
+                      })
+                    }
+                    className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer flex items-center gap-0.5"
+                    title="Ver fotos después"
+                  >
+                    <Eye className="w-3 h-3" />
+                    {fotosDespues.length > 1 && (
+                      <span className="text-[9px] font-black">{fotosDespues.length}</span>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -221,15 +278,26 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
               </div>
               <p className="font-bold leading-tight text-[11px]">Foto Previa</p>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-[9px] text-emerald-700">Auditado</span>
-                {ciclo.foto_antes_url && (
+                <span className="text-[9px] text-emerald-700 font-bold">
+                  {fotosAntes.length > 1 ? `${fotosAntes.length} fotos` : 'Auditado'}
+                </span>
+                {fotosAntes.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setFotoZoom(ciclo.foto_antes_url)}
-                    className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer"
+                    onClick={() =>
+                      setZoomModal({
+                        fotos: fotosAntes,
+                        indice: 0,
+                        titulo: `Fotos PREVIAS de máquina (${fotosAntes.length})`,
+                      })
+                    }
+                    className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer flex items-center gap-0.5"
                     title="Ver foto antes"
                   >
                     <Eye className="w-3 h-3" />
+                    {fotosAntes.length > 1 && (
+                      <span className="text-[9px] font-black">{fotosAntes.length}</span>
+                    )}
                   </button>
                 )}
               </div>
@@ -244,7 +312,7 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
                 <Clock className="w-4 h-4 text-emerald-600" />
               </div>
               <p className="font-bold leading-tight text-[11px]">Recaudar y Repartir</p>
-              <span className="text-[9px] text-emerald-700 mt-1">
+              <span className="text-[9px] text-emerald-700 mt-1 font-semibold">
                 {movVinculado ? `+${formatearMoneda(movVinculado.monto_ganado || 0)}` : 'Por registrar'}
               </span>
             </div>
@@ -280,18 +348,85 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
         )}
       </div>
 
-      {/* Modal Zoom Foto */}
-      {fotoZoom && (
+      {/* Modal Zoom Foto con Carrusel */}
+      {zoomModal && (
         <div
-          onClick={() => setFotoZoom(null)}
-          className="fixed inset-0 z-60 bg-black/85 flex items-center justify-center p-4 cursor-pointer animate-in fade-in"
+          onClick={() => setZoomModal(null)}
+          className="fixed inset-0 z-60 bg-black/90 flex flex-col items-center justify-center p-4 cursor-pointer animate-in fade-in"
         >
-          <div className="relative max-w-xl max-h-[90vh]">
-            <img
-              src={fotoZoom}
-              alt="Foto Antes"
-              className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl"
-            />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full flex flex-col items-center"
+          >
+            <div className="w-full flex items-center justify-between text-white text-xs font-bold mb-2 px-1">
+              <span>{zoomModal.titulo}</span>
+              <button
+                type="button"
+                onClick={() => setZoomModal(null)}
+                className="p-1 hover:bg-white/20 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+
+            <div className="relative w-full max-h-[80vh] flex items-center justify-center">
+              <img
+                src={zoomModal.fotos[zoomModal.indice]}
+                alt="Vista ampliada"
+                className="max-h-[78vh] max-w-full rounded-2xl object-contain shadow-2xl"
+              />
+
+              {zoomModal.fotos.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              indice: (prev.indice - 1 + prev.fotos.length) % prev.fotos.length,
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute left-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full cursor-pointer backdrop-blur-xs transition-colors"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomModal((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              indice: (prev.indice + 1) % prev.fotos.length,
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full cursor-pointer backdrop-blur-xs transition-colors"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {zoomModal.fotos.length > 1 && (
+              <div className="flex items-center gap-1.5 mt-3">
+                {zoomModal.fotos.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      i === zoomModal.indice ? 'bg-white scale-125' : 'bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

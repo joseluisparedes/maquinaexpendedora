@@ -385,7 +385,63 @@ export const DataService = {
       if (error || !data || data.length === 0) {
         return StorageService.getCiclos()
       }
-      return data as CicloMaquina[]
+      return data.map((row: any) => {
+        let fotosAntes: string[] = []
+        if (Array.isArray(row.fotos_antes_urls)) {
+          fotosAntes = row.fotos_antes_urls
+        } else if (typeof row.fotos_antes_urls === 'string') {
+          try {
+            const p = JSON.parse(row.fotos_antes_urls)
+            if (Array.isArray(p)) fotosAntes = p
+          } catch {
+            if (row.fotos_antes_urls) fotosAntes = [row.fotos_antes_urls]
+          }
+        }
+        if (fotosAntes.length === 0 && row.foto_antes_url) {
+          try {
+            const p = JSON.parse(row.foto_antes_url)
+            if (Array.isArray(p)) fotosAntes = p
+            else fotosAntes = [row.foto_antes_url]
+          } catch {
+            fotosAntes = [row.foto_antes_url]
+          }
+        }
+
+        let fotosDespues: string[] = []
+        if (Array.isArray(row.fotos_despues_urls)) {
+          fotosDespues = row.fotos_despues_urls
+        } else if (typeof row.fotos_despues_urls === 'string') {
+          try {
+            const p = JSON.parse(row.fotos_despues_urls)
+            if (Array.isArray(p)) fotosDespues = p
+          } catch {
+            if (row.fotos_despues_urls) fotosDespues = [row.fotos_despues_urls]
+          }
+        }
+        if (fotosDespues.length === 0 && row.foto_despues_url) {
+          try {
+            const p = JSON.parse(row.foto_despues_url)
+            if (Array.isArray(p)) fotosDespues = p
+            else fotosDespues = [row.foto_despues_url]
+          } catch {
+            fotosDespues = [row.foto_despues_url]
+          }
+        }
+
+        return {
+          ...row,
+          foto_antes_url: fotosAntes[0] || row.foto_antes_url || '',
+          fotos_antes_urls:
+            fotosAntes.length > 0 ? fotosAntes : row.foto_antes_url ? [row.foto_antes_url] : [],
+          foto_despues_url: fotosDespues[0] || row.foto_despues_url,
+          fotos_despues_urls:
+            fotosDespues.length > 0
+              ? fotosDespues
+              : row.foto_despues_url
+              ? [row.foto_despues_url]
+              : undefined,
+        } as CicloMaquina
+      })
     } catch {
       return StorageService.getCiclos()
     }

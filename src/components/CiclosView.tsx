@@ -10,6 +10,7 @@ import {
   Plus,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
+import { formatearMoneda } from '../utils/calculations'
 
 interface CiclosViewProps {
   ciclos: CicloMaquina[]
@@ -23,6 +24,7 @@ interface CiclosViewProps {
 
 export const CiclosView: React.FC<CiclosViewProps> = ({
   ciclos,
+  movimientos = [],
   usuarioActual,
   onAbrirIniciarCiclo,
   onVerDetalleCiclo,
@@ -186,6 +188,11 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
           {ciclosFiltrados.map((c) => {
             const esAbast = c.tipo === 'ABASTECIMIENTO'
             const cerrado = c.estado === 'CERRADO'
+            const cantFotosAntes = c.fotos_antes_urls?.length || (c.foto_antes_url ? 1 : 0)
+            const cantFotosDespues = c.fotos_despues_urls?.length || (c.foto_despues_url ? 1 : 0)
+            const movVinculado = movimientos.find(
+              (m) => c.movimiento_ids?.includes(m.id) || m.ciclo_id === c.id
+            )
 
             return (
               <div
@@ -205,7 +212,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                       {esAbast ? <ShoppingBag className="w-5 h-5" /> : <TrendingUp className="w-5 h-5" />}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {c.codigo}
                         </span>
@@ -225,6 +232,20 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                         >
                           {c.estado}
                         </span>
+
+                        {movVinculado && (
+                          <span
+                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                              esAbast
+                                ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                            }`}
+                          >
+                            {esAbast
+                              ? `-${formatearMoneda(movVinculado.total_gastado || 0)}`
+                              : `+${formatearMoneda(movVinculado.monto_ganado || 0)}`}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         Iniciado por <strong className="text-slate-700">{c.iniciado_por_nombre || 'Operador'}</strong> el {c.fecha_inicio} a las {c.hora_inicio}
@@ -259,11 +280,18 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                   <div className="flex items-center gap-3">
                     {/* Miniatura Foto Antes */}
                     <div className="flex items-center gap-2">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shrink-0">
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shrink-0">
                         <img src={c.foto_antes_url} alt="Antes" className="w-full h-full object-cover" />
+                        {cantFotosAntes > 1 && (
+                          <span className="absolute bottom-0 right-0 bg-slate-950/80 text-white text-[8px] font-black px-1 rounded-tl">
+                            +{cantFotosAntes - 1}
+                          </span>
+                        )}
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Foto Antes</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                          Foto Antes {cantFotosAntes > 1 && <span className="text-indigo-600 font-extrabold">({cantFotosAntes})</span>}
+                        </span>
                         <span className="text-[11px] text-slate-700 font-semibold">{c.hora_inicio}</span>
                       </div>
                     </div>
@@ -273,11 +301,18 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                     {/* Miniatura Foto Después */}
                     {c.foto_despues_url ? (
                       <div className="flex items-center gap-2">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shrink-0">
+                        <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shrink-0">
                           <img src={c.foto_despues_url} alt="Después" className="w-full h-full object-cover" />
+                          {cantFotosDespues > 1 && (
+                            <span className="absolute bottom-0 right-0 bg-slate-950/80 text-white text-[8px] font-black px-1 rounded-tl">
+                              +{cantFotosDespues - 1}
+                            </span>
+                          )}
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Foto Después</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                            Foto Después {cantFotosDespues > 1 && <span className="text-emerald-600 font-extrabold">({cantFotosDespues})</span>}
+                          </span>
                           <span className="text-[11px] text-slate-700 font-semibold">{c.hora_despues || 'Cierre'}</span>
                         </div>
                       </div>
