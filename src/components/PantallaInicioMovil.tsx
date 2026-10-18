@@ -186,35 +186,58 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                   ciclo={cicloActivo}
                   movimientos={movimientos}
                   usuarioActual={usuarioActual}
-                  onAbrirCerrarAbastecimiento={onAbrirCerrarAbastecimiento}
-                  onAbrirComprar={onAbrirComprar}
-                  onAbrirGanar={onAbrirGanar}
                   onVerDetalleCiclo={onVerDetalleCiclo}
                   onCancelarCiclo={onCancelarCiclo}
                 />
 
-                {cicloActivo.tipo === 'ABASTECIMIENTO' && cicloActivo.estado === 'EN_PROCESO' && (
-                  <button
-                    onClick={onAbrirCerrarAbastecimiento}
-                    className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-5 rounded-3xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
-                  >
-                    <div className="flex items-center gap-4 text-left">
-                      <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                        <Camera className="w-8 h-8 stroke-[2.3]" />
+                {cicloActivo.tipo === 'ABASTECIMIENTO' ? (
+                  cicloActivo.estado === 'EN_PROCESO' ? (
+                    <button
+                      onClick={onAbrirCerrarAbastecimiento}
+                      className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-5 rounded-3xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-emerald-400/30"
+                    >
+                      <div className="flex items-center gap-4 text-left">
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                          <Camera className="w-8 h-8 stroke-[2.3]" />
+                        </div>
+                        <div>
+                          <span className="text-xl font-black tracking-tight block">
+                            FOTO DESPUÉS
+                          </span>
+                          <span className="text-xs text-emerald-100 font-medium">
+                            📸 Cerrar ciclo con vitrina llena
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-xl font-black tracking-tight block">
-                          FOTO DESPUÉS
-                        </span>
-                        <span className="text-xs text-emerald-100 font-medium">
-                          📸 Cerrar ciclo con vitrina llena
-                        </span>
+                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                        <ArrowRight className="w-4 h-4" />
                       </div>
+                    </button>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 text-center space-y-1.5 shadow-2xs">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                        Paso 2: Compra en Curso
+                      </span>
+                      <p className="text-xs font-bold text-slate-800">
+                        Esperando que los socios registren la compra
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Una vez registrada la compra por un socio, se habilitará aquí el botón para subir la foto final y cerrar el ciclo.
+                      </p>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </button>
+                  )
+                ) : (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 text-center space-y-1.5 shadow-2xs">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                      Ruta de Ganancia en Curso
+                    </span>
+                    <p className="text-xs font-bold text-slate-800">
+                      Esperando recaudación y reparto
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Los socios registrarán el arqueo y se repartirá automáticamente la ganancia.
+                    </p>
+                  </div>
                 )}
               </div>
             ) : (
@@ -255,18 +278,6 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                 </button>
               </div>
             )}
-
-            {/* Botón Ver Galería de Fotos */}
-            <button
-              onClick={onAbrirGaleriaFotos}
-              className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-bold flex items-center justify-between transition-colors shadow-2xs cursor-pointer"
-            >
-              <span className="flex items-center gap-2">
-                <Images className="w-4 h-4 text-cyan-600" />
-                Ver Fotos Registradas ({fotosMaquina.length})
-              </span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-            </button>
           </div>
         ) : esDuenoLocal ? (
           /* CASO 2: DUEÑO DEL LOCAL (ELSA) - SOLO TIENE ACCESO A LOS MOVIMIENTOS */
@@ -389,8 +400,6 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                   ciclo={cicloActivo}
                   movimientos={movimientos}
                   usuarioActual={usuarioActual}
-                  onAbrirComprar={onAbrirComprar}
-                  onAbrirGanar={onAbrirGanar}
                   onVerDetalleCiclo={onVerDetalleCiclo}
                   onCancelarCiclo={onCancelarCiclo}
                 />
@@ -401,29 +410,45 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                     Ruta Activa: {cicloActivo.tipo === 'ABASTECIMIENTO' ? 'Abastecimiento' : 'Recaudación de Ganancia'}
                   </p>
 
-                  {/* CASO A: CICLO DE ABASTECIMIENTO -> SOLO APARECE EL BOTÓN COMPRAR */}
-                  {cicloActivo.tipo === 'ABASTECIMIENTO' && permisos.puede_comprar && (
-                    <button
-                      onClick={onAbrirComprar}
-                      className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-amber-200/50 hover:shadow-lg hover:shadow-amber-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-amber-400/30"
-                    >
-                      <div className="flex items-center gap-3.5 text-left">
-                        <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                          <ShoppingBag className="w-7 h-7 stroke-[2.5]" />
-                        </div>
-                        <div>
-                          <span className="text-xl sm:text-2xl font-black tracking-tight block">
-                            COMPRAR
-                          </span>
-                          <span className="text-xs text-amber-100 font-medium">
-                            Registrar compra de productos del ciclo
-                          </span>
-                        </div>
+                  {/* CASO A: CICLO DE ABASTECIMIENTO */}
+                  {cicloActivo.tipo === 'ABASTECIMIENTO' && (
+                    cicloActivo.estado === 'INICIADO' ? (
+                      permisos.puede_comprar && (
+                        <button
+                          onClick={onAbrirComprar}
+                          className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white p-4 sm:p-5 rounded-3xl shadow-md shadow-amber-200/50 hover:shadow-lg hover:shadow-amber-300/50 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-amber-400/30"
+                        >
+                          <div className="flex items-center gap-3.5 text-left">
+                            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                              <ShoppingBag className="w-7 h-7 stroke-[2.5]" />
+                            </div>
+                            <div>
+                              <span className="text-xl sm:text-2xl font-black tracking-tight block">
+                                COMPRAR
+                              </span>
+                              <span className="text-xs text-amber-100 font-medium">
+                                Registrar compra de productos del ciclo
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
+                        </button>
+                      )
+                    ) : (
+                      <div className="bg-amber-50/90 border border-amber-200 rounded-3xl p-4 text-center space-y-1 shadow-2xs">
+                        <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                          ✓ Compra Registrada
+                        </span>
+                        <p className="text-xs font-bold text-slate-800 mt-1">
+                          La compra para este ciclo ya fue completada.
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Esperando que la operadora abastezca la máquina con los productos y suba la foto final para cerrar el ciclo.
+                        </p>
                       </div>
-                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
-                        <ArrowRight className="w-4 h-4" />
-                      </div>
-                    </button>
+                    )
                   )}
 
                   {/* CASO B: CICLO DE GANANCIA -> SOLO APARECE EL BOTÓN GANAR */}

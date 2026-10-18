@@ -36,6 +36,7 @@ import { comprimirImagen, descargarImagen } from '../utils/imageHelper'
 interface RegistrarMovimientoModalProps {
   isOpen: boolean
   tipoInicial?: 'GANAR' | 'COMPRAR'
+  bloquearTipo?: boolean
   onClose: () => void
   participantes: Participante[]
   onMovimientoGuardado: (mov: Movimiento, movSobranteAsociado?: Movimiento) => void
@@ -46,6 +47,7 @@ type ResultadoCompra = 'EXACTO' | 'SOBRANTE' | 'ADICIONAL'
 export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> = ({
   isOpen,
   tipoInicial = 'GANAR',
+  bloquearTipo = false,
   onClose,
   participantes,
   onMovimientoGuardado,
@@ -479,34 +481,74 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
           </button>
         </div>
 
-        {/* Selector de Tipo (Ganar / Comprar) */}
+        {/* Selector de Tipo (Ganar / Comprar) o Badge Fijo si el ciclo está activo */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
-          <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setTipo('GANAR')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                tipo === 'GANAR'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Ganar (Recaudación)
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipo('COMPRAR')}
-              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          {bloquearTipo ? (
+            <div
+              className={`p-3.5 rounded-2xl border flex items-center justify-between ${
                 tipo === 'COMPRAR'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                  : 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
               }`}
             >
-              <ShoppingBag className="w-4 h-4" />
-              Comprar (Mercadería)
-            </button>
-          </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-xs shrink-0 ${
+                    tipo === 'COMPRAR' ? 'bg-amber-600' : 'bg-emerald-600'
+                  }`}
+                >
+                  {tipo === 'COMPRAR' ? (
+                    <ShoppingBag className="w-5 h-5 stroke-[2.5]" />
+                  ) : (
+                    <TrendingUp className="w-5 h-5 stroke-[2.5]" />
+                  )}
+                </div>
+                <div>
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                      tipo === 'COMPRAR'
+                        ? 'text-amber-800 bg-amber-100 border border-amber-200'
+                        : 'text-emerald-800 bg-emerald-100 border border-emerald-200'
+                    }`}
+                  >
+                    {tipo === 'COMPRAR' ? 'Ruta de Abastecimiento' : 'Ruta de Ganancia'}
+                  </span>
+                  <p className="text-xs sm:text-sm font-black mt-0.5">
+                    {tipo === 'COMPRAR'
+                      ? 'Comprar (Mercadería para la Máquina)'
+                      : 'Ganar (Recaudación y Reparto Automático)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setTipo('GANAR')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  tipo === 'GANAR'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Ganar (Recaudación)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTipo('COMPRAR')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  tipo === 'COMPRAR'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Comprar (Mercadería)
+              </button>
+            </div>
+          )}
 
           <form id="form-movimiento" onSubmit={handleSubmit} className="space-y-5">
             {/* Fecha y Registrado Por */}

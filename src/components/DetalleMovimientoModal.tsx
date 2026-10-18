@@ -22,6 +22,7 @@ interface DetalleMovimientoModalProps {
   movimiento: Movimiento | null
   onClose: () => void
   participantes: Participante[]
+  usuarioActual?: Participante
   onCambiarEstadoAporte?: (movId: string, nuevoEstado: 'DEVUELTO' | 'PENDIENTE') => Promise<void>
 }
 
@@ -29,6 +30,7 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
   movimiento,
   onClose,
   participantes,
+  usuarioActual,
   onCambiarEstadoAporte,
 }) => {
   const [fotoEnPantallaCompleta, setFotoEnPantallaCompleta] = useState<string | null>(null)
@@ -195,6 +197,13 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
                   (movimiento.aportes_adicionales && movimiento.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
                 )
                 const socioNombre = partMap.get(movimiento.quien_aporto_adicional || '')?.nombre || 'Socio'
+                const esAcreedor = Boolean(
+                  usuarioActual &&
+                  movimiento.quien_aporto_adicional &&
+                  usuarioActual.id === movimiento.quien_aporto_adicional
+                )
+                const esAdmin = usuarioActual?.rol === 'Administrador'
+                const puedeMarcarDevuelto = esAcreedor || esAdmin
 
                 if (estaDevuelto) {
                   return (
@@ -213,7 +222,7 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
                           </p>
                         </div>
                       </div>
-                      {onCambiarEstadoAporte && (
+                      {onCambiarEstadoAporte && puedeMarcarDevuelto && (
                         <button
                           onClick={() => onCambiarEstadoAporte(movimiento.id, 'PENDIENTE')}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 bg-white border border-slate-200 rounded-xl hover:bg-rose-50 transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
@@ -240,17 +249,26 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
                         <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
                           El socio <strong className="text-amber-950 font-black">{socioNombre}</strong> cubrió este faltante de su propio bolsillo. Gasto total de la compra: <strong className="font-black text-slate-900">{formatearMoneda(movimiento.total_gastado || 0)}</strong>.
                         </p>
+                        {!puedeMarcarDevuelto && (
+                          <p className="text-[11px] text-amber-700 italic mt-1 font-semibold">
+                            🔒 Solo el socio acreedor ({socioNombre}) puede marcar como devuelto cuando reciba el dinero.
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {onCambiarEstadoAporte && (
+                    {onCambiarEstadoAporte && puedeMarcarDevuelto ? (
                       <button
                         onClick={() => onCambiarEstadoAporte(movimiento.id, 'DEVUELTO')}
                         className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all shrink-0 cursor-pointer active:scale-95 self-start sm:self-auto"
-                        title="Registrar que ya se le devolvió el dinero al socio"
+                        title="Registrar que ya recibiste de vuelta tu dinero"
                       >
                         <Check className="w-4 h-4 stroke-[2.5]" />
                         <span>Marcar Devuelto</span>
                       </button>
+                    ) : (
+                      <span className="text-[11px] font-bold text-amber-800 bg-amber-100/90 px-3 py-1.5 rounded-xl border border-amber-300 shrink-0 self-start sm:self-auto">
+                        Pendiente de cobro
+                      </span>
                     )}
                   </div>
                 )

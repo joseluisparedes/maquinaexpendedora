@@ -1,11 +1,9 @@
 import React, { useState } from 'react'
 import {
-  Camera,
   ShoppingBag,
   TrendingUp,
   CheckCircle2,
   Clock,
-  ArrowRight,
   Eye,
   XCircle,
   Sparkles,
@@ -28,15 +26,11 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
   ciclo,
   movimientos,
   usuarioActual,
-  onAbrirCerrarAbastecimiento,
-  onAbrirComprar,
-  onAbrirGanar,
   onVerDetalleCiclo,
   onCancelarCiclo,
 }) => {
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const esAdmin = usuarioActual.rol === 'Administrador'
-  const esOperador = !usuarioActual.es_socio && (usuarioActual.rol === 'Operador de Máquina' || usuarioActual.rol_id === 'operador')
 
   if (!ciclo || ciclo.estado === 'CERRADO') return null
 
@@ -258,49 +252,31 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
         )}
       </div>
 
-      {/* Botón de Acción Principal del Ciclo */}
+      {/* Estado Actual del Ciclo (Informativo, sin botones duplicados) */}
       <div className="pt-1">
         {esAbastecimiento ? (
           tieneCompraRegistrada ? (
-            /* Si la compra ya se hizo, la operadora sube la foto después para cerrar el ciclo */
-            esOperador || esAdmin ? (
-              <button
-                type="button"
-                onClick={onAbrirCerrarAbastecimiento}
-                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
-              >
-                <Camera className="w-4 h-4 stroke-[2.5]" />
-                <span>Subir Foto DESPUÉS para Cerrar Ciclo</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-center text-xs text-amber-900 font-bold">
-                ⏳ Compra registrada. Esperando que la operadora abastezca la máquina y suba la foto final.
-              </div>
-            )
+            <div className="p-3 bg-emerald-50/90 rounded-2xl border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Compra registrada.</strong> Listo para que la operadora abastezca la máquina y tome la foto final.
+              </span>
+            </div>
           ) : (
-            /* Si no se ha hecho la compra, llamar a comprar */
-            <button
-              type="button"
-              onClick={onAbrirComprar}
-              className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
-            >
-              <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
-              <span>Registrar Compra para este Ciclo</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="p-3 bg-amber-50/90 rounded-2xl border border-amber-200 text-xs text-amber-900 font-semibold flex items-center gap-2.5">
+              <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Paso 2 pendiente:</strong> Esperando que los socios registren la compra de mercadería.
+              </span>
+            </div>
           )
         ) : (
-          /* Si es ganancia, llamar a registrar ganancia */
-          <button
-            type="button"
-            onClick={onAbrirGanar}
-            className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
-          >
-            <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-            <span>Registrar Ganancia y Reparto del Ciclo</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="p-3 bg-emerald-50/90 rounded-2xl border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Paso 2 pendiente:</strong> Esperando registro del conteo de recaudación y reparto entre socios.
+            </span>
+          </div>
         )}
       </div>
 

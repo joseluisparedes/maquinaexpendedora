@@ -790,6 +790,7 @@ export function App() {
       <RegistrarMovimientoModal
         isOpen={modalRegistroAbierto}
         tipoInicial={tipoModalInicial}
+        bloquearTipo={Boolean(cicloActivo)}
         onClose={() => setModalRegistroAbierto(false)}
         participantes={participantes}
         onMovimientoGuardado={handleMovimientoGuardado}
@@ -799,6 +800,7 @@ export function App() {
         movimiento={detalleMov}
         onClose={() => setDetalleMov(null)}
         participantes={participantes}
+        usuarioActual={usuarioActual}
         onCambiarEstadoAporte={handleCambiarEstadoAporte}
       />
 
