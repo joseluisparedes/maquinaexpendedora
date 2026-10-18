@@ -122,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-base">
-                  Finanzas Vending
+                  Máquina Expendedora
                 </span>
                 {conectadoSupabase ? (
                   <span

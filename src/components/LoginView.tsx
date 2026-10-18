@@ -71,7 +71,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <Coins className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-          Finanzas Vending
+          Máquina Expendedora
         </h1>
         <p className="text-xs sm:text-sm text-indigo-200/80 mt-1">
           Control de Recaudación y Abastecimiento • Colegio
@@ -201,9 +201,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   {num}
                 </button>
               ))}
-              <div className="h-14 flex items-center justify-center text-[10px] text-indigo-200/50 font-bold">
-                PIN: 1234
-              </div>
+              <div className="h-14" />
               <button
                 type="button"
                 onClick={() => handleDigito('0')}

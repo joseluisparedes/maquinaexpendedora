@@ -487,6 +487,8 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(PARTICIPANTES_INICIALES))
     localStorage.setItem(STORAGE_KEYS.CONFIG_REPARTO, JSON.stringify(CONFIG_INICIAL))
     localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
+    localStorage.setItem(STORAGE_KEYS.FOTOS_MAQUINA, JSON.stringify([]))
+    localStorage.setItem(STORAGE_KEYS.CICLOS, JSON.stringify([]))
     localStorage.setItem(STORAGE_KEYS.PROVEEDORES_FRECUENTES, JSON.stringify(PROVEEDORES_DEFAULT))
     localStorage.setItem(STORAGE_KEYS.GLOSAS_COMPRA, JSON.stringify(GLOSAS_COMPRA_DEFAULT))
     localStorage.setItem(STORAGE_KEYS.GLOSAS_GANAR, JSON.stringify(GLOSAS_GANAR_DEFAULT))

@@ -658,16 +658,26 @@ export function App() {
     setRoles(nuevosRoles)
   }
 
-  // Vaciar todos los movimientos (Solo Admin)
+  // Restaurar aplicativo de fábrica (Solo Admin): vacía movimientos, ciclos y multimedias
   const handleVaciarMovimientos = async () => {
     if (!permisos.puede_gestionar_usuarios) return
     if (
       window.confirm(
-        '¿Estás seguro de que deseas eliminar TODOS los movimientos registrados? Esta acción reiniciará los saldos a S/ 0.00 tanto en Supabase como en tu navegador.'
+        '¿Estás seguro de que deseas RESTAURAR DE FÁBRICA el aplicativo? Esta acción eliminará permanentemente todos los movimientos, ciclos de máquina y fotos/multimedias cargados tanto en Supabase como en tu navegador.'
       )
     ) {
-      await DataService.clearAllMovimientos()
+      await DataService.restaurarDeFabrica()
       setMovimientos([])
+      setCiclos([])
+      setFotosMaquina([])
+      setDetalleCicloSeleccionado(null)
+      setDetalleMov(null)
+      mostrarAviso({
+        tipo: 'exito',
+        titulo: 'Aplicativo Restaurado de Fábrica',
+        mensaje:
+          'Se han eliminado todos los movimientos, ciclos de máquina y fotos/multimedias. El sistema ha quedado en cero y listo para su uso.',
+      })
     }
   }
 
@@ -838,7 +848,7 @@ export function App() {
 
           <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
             <p>
-              Sistema de Finanzas — Máquina Expendedora • Conectado como {usuarioActual.nombre} ({usuarioActual.rol})
+              Máquina Expendedora • Conectado como {usuarioActual.nombre} ({usuarioActual.rol})
             </p>
           </footer>
         </div>
@@ -851,6 +861,7 @@ export function App() {
         bloquearTipo={Boolean(cicloActivo)}
         onClose={() => setModalRegistroAbierto(false)}
         participantes={participantes}
+        usuarioActual={usuarioActual}
         onMovimientoGuardado={handleMovimientoGuardado}
       />
 

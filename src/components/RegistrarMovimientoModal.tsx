@@ -39,6 +39,7 @@ interface RegistrarMovimientoModalProps {
   bloquearTipo?: boolean
   onClose: () => void
   participantes: Participante[]
+  usuarioActual?: Participante
   onMovimientoGuardado: (mov: Movimiento, movSobranteAsociado?: Movimiento) => void
 }
 
@@ -50,6 +51,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   bloquearTipo = false,
   onClose,
   participantes,
+  usuarioActual,
   onMovimientoGuardado,
 }) => {
   const hoyStr = new Date().toISOString().slice(0, 10)
@@ -57,7 +59,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [fecha, setFecha] = useState<string>(hoyStr)
   const [descripcion, setDescripcion] = useState<string>('')
   const [registradoPor, setRegistradoPor] = useState<string>(
-    participantes[0]?.id || ''
+    usuarioActual?.id || participantes[0]?.id || ''
   )
 
   // Sincronizar tipo y atajos cuando el modal se abre
@@ -65,6 +67,9 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     if (isOpen) {
       setTipo(tipoInicial)
       setFecha(new Date().toISOString().slice(0, 10))
+      const userDefecto = usuarioActual?.id || participantes[0]?.id || ''
+      setRegistradoPor(userDefecto)
+      setQuienAportoAdicional(userDefecto)
       setProveedoresSeleccionados([])
       setTextoProveedor('')
       setComprobantes([])
@@ -73,7 +78,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
       setGlosasCompra(StorageService.getGlosasCompraFrecuentes())
       setGlosasGanar(StorageService.getGlosasGanarFrecuentes())
     }
-  }, [isOpen, tipoInicial])
+  }, [isOpen, tipoInicial, usuarioActual, participantes])
 
   // Estado para GANAR
   const [montoGanado, setMontoGanado] = useState<number | ''>('')
@@ -105,7 +110,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [resultadoCompra, setResultadoCompra] = useState<ResultadoCompra>('EXACTO')
   const [montoAdicional, setMontoAdicional] = useState<number | ''>('')
   const [quienAportoAdicional, setQuienAportoAdicional] = useState<string>(
-    participantes[0]?.id || ''
+    usuarioActual?.id || participantes[0]?.id || ''
   )
   const [montoSobrante, setMontoSobrante] = useState<number | ''>('')
   const [destinoSobrante, setDestinoSobrante] = useState<'CAJA' | 'REPARTO'>('CAJA')
@@ -577,7 +582,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                 >
                   {participantes.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.nombre} ({p.rol})
+                      {p.nombre} ({p.rol}){p.id === usuarioActual?.id ? ' — Tú (en sesión)' : ''}
                     </option>
                   ))}
                 </select>
@@ -886,7 +891,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                           >
                             {participantes.map((p) => (
                               <option key={p.id} value={p.id}>
-                                {p.nombre} ({p.rol})
+                                {p.nombre} ({p.rol}){p.id === usuarioActual?.id ? ' — Tú (en sesión)' : ''}
                               </option>
                             ))}
                           </select>

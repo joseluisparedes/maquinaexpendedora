@@ -840,10 +840,10 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
           <button
             onClick={onVaciarMovimientos}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-            title="Elimina todos los movimientos para empezar de cero"
+            title="Restaura de fábrica: elimina permanentemente movimientos, ciclos y multimedias cargados"
           >
             <Trash2 className="w-4 h-4 text-rose-600" />
-            Vaciar Todos los Movimientos (Reiniciar a 0)
+            Restaurar de Fábrica (Vaciar Registros y Multimedias)
           </button>
         </div>
       </div>

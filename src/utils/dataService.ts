@@ -327,8 +327,10 @@ export const DataService = {
     }
   },
 
-  async clearAllMovimientos(): Promise<void> {
+  async restaurarDeFabrica(): Promise<void> {
     StorageService.saveMovimientos([])
+    StorageService.saveFotosMaquina([])
+    StorageService.saveCiclos([])
     if (supabase && isSupabaseConfigured) {
       try {
         await supabase
@@ -338,7 +340,19 @@ export const DataService = {
       } catch (err) {
         console.warn('Error borrando movimientos en Supabase', err)
       }
+      try {
+        await supabase
+          .from('vending_ciclos')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000')
+      } catch (err) {
+        console.warn('Error borrando ciclos en Supabase', err)
+      }
     }
+  },
+
+  async clearAllMovimientos(): Promise<void> {
+    await this.restaurarDeFabrica()
   },
 
   async getRoles(): Promise<RolDefinicion[]> {
