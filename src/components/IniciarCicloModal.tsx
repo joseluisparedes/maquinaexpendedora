@@ -11,6 +11,7 @@ import {
   Trash2,
   Eye,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react'
 import type { TipoCiclo, Participante } from '../types'
 import { comprimirImagen } from '../utils/imageHelper'
@@ -37,6 +38,7 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
   const [observaciones, setObservaciones] = useState('')
   const [procesandoFoto, setProcesandoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [errorValidacion, setErrorValidacion] = useState<string | null>(null)
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -48,12 +50,13 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
     const file = e.target.files?.[0]
     if (!file) return
 
+    setErrorValidacion(null)
     setProcesandoFoto(true)
     try {
       const dataUrl = await comprimirImagen(file)
       setFotoAntes(dataUrl)
     } catch {
-      alert('Error procesando la imagen. Intenta con otra foto.')
+      setErrorValidacion('Error procesando la imagen. Intenta con otra foto.')
     } finally {
       setProcesandoFoto(false)
       if (e.target) e.target.value = ''
@@ -62,8 +65,9 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorValidacion(null)
     if (!fotoAntes) {
-      alert('Es obligatorio tomar la foto ANTES para iniciar cualquier ciclo de máquina.')
+      setErrorValidacion('Es obligatorio tomar la foto ANTES para iniciar cualquier ciclo de máquina.')
       return
     }
 
@@ -76,7 +80,7 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
       })
       onClose()
     } catch (err: any) {
-      alert('Error al iniciar el ciclo: ' + (err?.message || 'Error inesperado'))
+      setErrorValidacion('Error al iniciar el ciclo: ' + (err?.message || 'Error inesperado'))
     } finally {
       setGuardando(false)
     }
@@ -111,6 +115,13 @@ export const IniciarCicloModal: React.FC<IniciarCicloModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 text-xs sm:text-sm">
           
+          {errorValidacion && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-rose-800 text-xs font-semibold animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorValidacion}</span>
+            </div>
+          )}
+
           {/* PASO 1: FOTO ANTES (OBLIGATORIA) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">

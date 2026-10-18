@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   Eye,
   Trash2,
+  AlertCircle,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -39,6 +40,7 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
   const [observaciones, setObservaciones] = useState('')
   const [procesandoFoto, setProcesandoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [errorValidacion, setErrorValidacion] = useState<string | null>(null)
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -50,12 +52,13 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
     const file = e.target.files?.[0]
     if (!file) return
 
+    setErrorValidacion(null)
     setProcesandoFoto(true)
     try {
       const dataUrl = await comprimirImagen(file)
       setFotoDespues(dataUrl)
     } catch {
-      alert('Error procesando la imagen.')
+      setErrorValidacion('Error procesando la imagen. Intenta con otra foto.')
     } finally {
       setProcesandoFoto(false)
       if (e.target) e.target.value = ''
@@ -64,8 +67,9 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorValidacion(null)
     if (!fotoDespues) {
-      alert('Debes tomar o subir la foto de la máquina abastecida para cerrar el ciclo.')
+      setErrorValidacion('Debes tomar o subir la foto de la máquina abastecida para cerrar el ciclo.')
       return
     }
 
@@ -77,7 +81,7 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
       })
       onClose()
     } catch (err: any) {
-      alert('Error cerrando el ciclo: ' + (err?.message || 'Error inesperado'))
+      setErrorValidacion('Error cerrando el ciclo: ' + (err?.message || 'Error inesperado'))
     } finally {
       setGuardando(false)
     }
@@ -112,6 +116,13 @@ export const CerrarAbastecimientoModal: React.FC<CerrarAbastecimientoModalProps>
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs sm:text-sm">
           
+          {errorValidacion && (
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2.5 text-rose-800 text-xs font-semibold animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorValidacion}</span>
+            </div>
+          )}
+
           {/* Tarjeta Informativa de la Compra vinculada */}
           {movimientoCompra && (
             <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1.5 text-xs text-amber-950">

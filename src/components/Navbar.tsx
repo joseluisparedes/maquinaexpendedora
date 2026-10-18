@@ -16,8 +16,10 @@ import {
   LogOut,
   Bell,
   Sparkles,
+  ShoppingBag,
+  TrendingUp,
 } from 'lucide-react'
-import type { Participante, PermisosRol } from '../types'
+import type { CicloMaquina, Participante, PermisosRol } from '../types'
 import { formatearMoneda } from '../utils/calculations'
 
 interface NavbarProps {
@@ -27,6 +29,7 @@ interface NavbarProps {
   conectadoSupabase: boolean
   usuarioActual: Participante
   permisos: PermisosRol
+  cicloActivo?: CicloMaquina | null
   onNuevoMovimiento: () => void
   onAbrirFotoMaquina: () => void
   onAbrirDetalleCaja?: () => void
@@ -45,6 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   conectadoSupabase,
   usuarioActual,
   permisos,
+  cicloActivo,
   onNuevoMovimiento,
   onAbrirFotoMaquina,
   onAbrirDetalleCaja,
@@ -199,14 +203,39 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Botón Nuevo Movimiento si puede ganar o comprar */}
+            {/* Botón Nuevo Movimiento contextual según el ciclo activo */}
             {(permisos.puede_ganar || permisos.puede_comprar) && (
               <button
                 onClick={onNuevoMovimiento}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm transition-colors cursor-pointer"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer active:scale-95 ${
+                  cicloActivo?.tipo === 'ABASTECIMIENTO'
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'
+                    : cicloActivo?.tipo === 'GANANCIA'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+                }`}
+                title={
+                  cicloActivo
+                    ? `Registrar movimiento para ciclo ${cicloActivo.codigo}`
+                    : 'Registrar movimiento (requiere ciclo activo)'
+                }
               >
-                <PlusCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Nuevo</span>
+                {cicloActivo?.tipo === 'ABASTECIMIENTO' ? (
+                  <>
+                    <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
+                    <span className="hidden sm:inline">Comprar</span>
+                  </>
+                ) : cicloActivo?.tipo === 'GANANCIA' ? (
+                  <>
+                    <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+                    <span className="hidden sm:inline">Ganar</span>
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">Nuevo</span>
+                  </>
+                )}
               </button>
             )}
 

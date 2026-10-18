@@ -9,16 +9,18 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ShoppingBag,
+  TrendingUp,
   Edit2,
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react'
-import type { Movimiento, Participante } from '../types'
+import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
 
 interface MovimientosViewProps {
   movimientos: Movimiento[]
   participantes: Participante[]
+  cicloActivo?: CicloMaquina | null
   onNuevoMovimiento: () => void
   onVerDetalle: (mov: Movimiento) => void
   onEditar: (mov: Movimiento) => void
@@ -28,6 +30,7 @@ interface MovimientosViewProps {
 export const MovimientosView: React.FC<MovimientosViewProps> = ({
   movimientos,
   participantes,
+  cicloActivo,
   onNuevoMovimiento,
   onVerDetalle,
   onEditar,
@@ -145,10 +148,30 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
 
             <button
               onClick={onNuevoMovimiento}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-transform active:scale-95 cursor-pointer ${
+                cicloActivo?.tipo === 'ABASTECIMIENTO'
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'
+                  : cicloActivo?.tipo === 'GANANCIA'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                  : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+              }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              Registrar Movimiento
+              {cicloActivo?.tipo === 'ABASTECIMIENTO' ? (
+                <>
+                  <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
+                  <span>Registrar Compra</span>
+                </>
+              ) : cicloActivo?.tipo === 'GANANCIA' ? (
+                <>
+                  <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+                  <span>Registrar Ganancia</span>
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Registrar Movimiento</span>
+                </>
+              )}
             </button>
           </div>
         </div>

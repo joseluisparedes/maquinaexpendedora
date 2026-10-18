@@ -19,6 +19,7 @@ import { ModalDevolucionAportes } from './components/ModalDevolucionAportes'
 import { IniciarCicloModal } from './components/IniciarCicloModal'
 import { CerrarAbastecimientoModal } from './components/CerrarAbastecimientoModal'
 import { DetalleCicloModal } from './components/DetalleCicloModal'
+import { ModalAviso, type ModalAvisoData } from './components/ModalAviso'
 import type {
   ConfigReparto,
   FotoMaquina,
@@ -84,6 +85,11 @@ export function App() {
   const [movAEditar, setMovAEditar] = useState<Movimiento | null>(null)
   const [modalCajaAbierto, setModalCajaAbierto] = useState(false)
   const [modalDevolucionAbierto, setModalDevolucionAbierto] = useState(false)
+  const [modalAvisoData, setModalAvisoData] = useState<ModalAvisoData | null>(null)
+
+  const mostrarAviso = useCallback((aviso: Omit<ModalAvisoData, 'isOpen'>) => {
+    setModalAvisoData({ ...aviso, isOpen: true })
+  }, [])
 
   // Permisos dinámicos del usuario activo
   const permisos = useMemo(() => {
@@ -292,15 +298,24 @@ export function App() {
   // Triggers para abrir Ganar o Comprar
   const abrirRegistroGanar = () => {
     if (!permisos.puede_ganar) {
-      alert('Tu rol no tiene permisos para registrar ganancias.')
+      mostrarAviso({
+        tipo: 'alerta',
+        titulo: 'Permiso Requerido',
+        mensaje: 'Tu rol actual no tiene permisos configurados para registrar ganancias.',
+      })
       return
     }
     if (!cicloActivo) {
-      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar la recaudación.')
+      handleNuevoMovimientoSegunCiclo()
       return
     }
     if (cicloActivo.tipo === 'ABASTECIMIENTO') {
-      alert('El ciclo activo es de ABASTECIMIENTO. No puedes registrar ganancias en esta ruta.')
+      mostrarAviso({
+        tipo: 'alerta',
+        titulo: 'Ruta de Abastecimiento en Curso',
+        mensaje:
+          'El ciclo activo es de ABASTECIMIENTO. En esta ruta solo se registran compras de productos. Para recaudar dinero debe completarse este ciclo e iniciar una ruta de recaudación.',
+      })
       return
     }
     setTipoModalInicial('GANAR')
@@ -309,15 +324,24 @@ export function App() {
 
   const abrirRegistroComprar = () => {
     if (!permisos.puede_comprar) {
-      alert('Tu rol no tiene permisos para registrar compras.')
+      mostrarAviso({
+        tipo: 'alerta',
+        titulo: 'Permiso Requerido',
+        mensaje: 'Tu rol actual no tiene permisos configurados para registrar compras.',
+      })
       return
     }
     if (!cicloActivo) {
-      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar las compras.')
+      handleNuevoMovimientoSegunCiclo()
       return
     }
     if (cicloActivo.tipo === 'GANANCIA') {
-      alert('El ciclo activo es de GANANCIA. No puedes registrar compras de mercadería en esta ruta.')
+      mostrarAviso({
+        tipo: 'alerta',
+        titulo: 'Ruta de Ganancia en Curso',
+        mensaje:
+          'El ciclo activo es de GANANCIA. En esta ruta solo se registra recaudación de dinero. Para comprar mercadería debe completarse este ciclo e iniciar una ruta de abastecimiento.',
+      })
       return
     }
     setTipoModalInicial('COMPRAR')
@@ -327,7 +351,27 @@ export function App() {
   // Helper para botón 'Nuevo Movimiento' en panel completo según el ciclo activo
   const handleNuevoMovimientoSegunCiclo = () => {
     if (!cicloActivo) {
-      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar compras o ganancias.')
+      if (permisos.puede_foto_maquina) {
+        mostrarAviso({
+          tipo: 'ciclo_requerido',
+          titulo: 'Máquina sin Ciclo Activo',
+          mensaje:
+            'Para registrar compras o recaudaciones, primero debes aperturar el ciclo tomando la foto previa de la máquina.',
+          accionPrincipal: {
+            texto: 'Iniciar Ciclo Ahora',
+            onClick: () => setModalIniciarCicloAbierto(true),
+          },
+          textoBotonCerrar: 'Cancelar',
+        })
+      } else {
+        mostrarAviso({
+          tipo: 'ciclo_requerido',
+          titulo: 'Máquina sin Ciclo Activo',
+          mensaje:
+            'La máquina no tiene un ciclo activo en este momento. La operadora debe iniciar el ciclo con la foto previa para habilitar compras o recaudaciones.',
+          textoBotonCerrar: 'Entendido',
+        })
+      }
       return
     }
     if (cicloActivo.tipo === 'ABASTECIMIENTO') {
@@ -339,7 +383,11 @@ export function App() {
 
   const abrirRegistroFotoMaquina = () => {
     if (!permisos.puede_foto_maquina) {
-      alert('Tu rol no tiene permisos para registrar fotos de la máquina.')
+      mostrarAviso({
+        tipo: 'alerta',
+        titulo: 'Permiso Requerido',
+        mensaje: 'Tu rol actual no tiene permisos para registrar fotos de la máquina.',
+      })
       return
     }
     setModalFotoAbierto(true)
@@ -684,6 +732,7 @@ export function App() {
             conectadoSupabase={conectadoSupabase}
             usuarioActual={usuarioActual}
             permisos={permisos}
+            cicloActivo={cicloActivo}
             onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
             onAbrirFotoMaquina={abrirRegistroFotoMaquina}
             onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
@@ -725,20 +774,29 @@ export function App() {
               <MovimientosView
                 movimientos={movimientos}
                 participantes={participantes}
+                cicloActivo={cicloActivo}
                 onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
                 onVerDetalle={(m) => setDetalleMov(m)}
                 onEditar={(m) => {
                   if (permisos.puede_gestionar_usuarios || permisos.puede_ganar || permisos.puede_comprar) {
                     setMovAEditar(m)
                   } else {
-                    alert('No tienes permisos para editar movimientos.')
+                    mostrarAviso({
+                      tipo: 'alerta',
+                      titulo: 'Permiso Requerido',
+                      mensaje: 'No tienes permisos para editar movimientos.',
+                    })
                   }
                 }}
                 onAnular={(m) => {
                   if (permisos.puede_gestionar_usuarios || permisos.puede_ganar) {
                     setMovAAnular(m)
                   } else {
-                    alert('No tienes permisos para anular movimientos.')
+                    mostrarAviso({
+                      tipo: 'alerta',
+                      titulo: 'Permiso Requerido',
+                      mensaje: 'Solo los administradores pueden anular movimientos.',
+                    })
                   }
                 }}
               />
@@ -899,6 +957,12 @@ export function App() {
           setDetalleCicloSeleccionado(null)
           setDetalleMov(m)
         }}
+      />
+
+      {/* Modal Aviso / Notificaciones Elegantes (Reemplazo nativo de alert()) */}
+      <ModalAviso
+        data={modalAvisoData}
+        onClose={() => setModalAvisoData(null)}
       />
     </>
   )
