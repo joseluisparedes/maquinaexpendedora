@@ -296,7 +296,7 @@ export function App() {
       return
     }
     if (!cicloActivo) {
-      setModalIniciarCicloAbierto(true)
+      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar la recaudación.')
       return
     }
     if (cicloActivo.tipo === 'ABASTECIMIENTO') {
@@ -313,7 +313,7 @@ export function App() {
       return
     }
     if (!cicloActivo) {
-      setModalIniciarCicloAbierto(true)
+      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar las compras.')
       return
     }
     if (cicloActivo.tipo === 'GANANCIA') {
@@ -322,6 +322,19 @@ export function App() {
     }
     setTipoModalInicial('COMPRAR')
     setModalRegistroAbierto(true)
+  }
+
+  // Helper para botón 'Nuevo Movimiento' en panel completo según el ciclo activo
+  const handleNuevoMovimientoSegunCiclo = () => {
+    if (!cicloActivo) {
+      alert('No hay un ciclo activo en la máquina. La operadora debe iniciar el ciclo con la foto antes para habilitar compras o ganancias.')
+      return
+    }
+    if (cicloActivo.tipo === 'ABASTECIMIENTO') {
+      abrirRegistroComprar()
+    } else {
+      abrirRegistroGanar()
+    }
   }
 
   const abrirRegistroFotoMaquina = () => {
@@ -671,10 +684,7 @@ export function App() {
             conectadoSupabase={conectadoSupabase}
             usuarioActual={usuarioActual}
             permisos={permisos}
-            onNuevoMovimiento={() => {
-              setTipoModalInicial('GANAR')
-              setModalRegistroAbierto(true)
-            }}
+            onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
             onAbrirFotoMaquina={abrirRegistroFotoMaquina}
             onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
             cantidadAportesPendientes={cantidadAportesPendientes}
@@ -691,10 +701,7 @@ export function App() {
               <DashboardView
                 movimientos={movimientos}
                 participantes={participantes}
-                onNuevoMovimiento={() => {
-                  setTipoModalInicial('GANAR')
-                  setModalRegistroAbierto(true)
-                }}
+                onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
                 onVerMovimientos={() => setVistaActual('movimientos')}
                 onAbrirDetalleCaja={() => setModalCajaAbierto(true)}
               />
@@ -718,12 +725,7 @@ export function App() {
               <MovimientosView
                 movimientos={movimientos}
                 participantes={participantes}
-                onNuevoMovimiento={() => {
-                  if (permisos.puede_ganar || permisos.puede_comprar) {
-                    setTipoModalInicial('GANAR')
-                    setModalRegistroAbierto(true)
-                  }
-                }}
+                onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
                 onVerDetalle={(m) => setDetalleMov(m)}
                 onEditar={(m) => {
                   if (permisos.puede_gestionar_usuarios || permisos.puede_ganar || permisos.puede_comprar) {

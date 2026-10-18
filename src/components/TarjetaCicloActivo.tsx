@@ -36,6 +36,7 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
 }) => {
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const esAdmin = usuarioActual.rol === 'Administrador'
+  const esOperador = !usuarioActual.es_socio && (usuarioActual.rol === 'Operador de Máquina' || usuarioActual.rol_id === 'operador')
 
   if (!ciclo || ciclo.estado === 'CERRADO') return null
 
@@ -261,16 +262,22 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
       <div className="pt-1">
         {esAbastecimiento ? (
           tieneCompraRegistrada ? (
-            /* Si la compra ya se hizo, el siguiente paso es que la operadora suba la foto después */
-            <button
-              type="button"
-              onClick={onAbrirCerrarAbastecimiento}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
-            >
-              <Camera className="w-4 h-4 stroke-[2.5]" />
-              <span>Subir Foto DESPUÉS para Cerrar Ciclo</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            /* Si la compra ya se hizo, la operadora sube la foto después para cerrar el ciclo */
+            esOperador || esAdmin ? (
+              <button
+                type="button"
+                onClick={onAbrirCerrarAbastecimiento}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
+              >
+                <Camera className="w-4 h-4 stroke-[2.5]" />
+                <span>Subir Foto DESPUÉS para Cerrar Ciclo</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-center text-xs text-amber-900 font-bold">
+                ⏳ Compra registrada. Esperando que la operadora abastezca la máquina y suba la foto final.
+              </div>
+            )
           ) : (
             /* Si no se ha hecho la compra, llamar a comprar */
             <button

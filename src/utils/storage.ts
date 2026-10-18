@@ -62,7 +62,7 @@ export const ROLES_INICIALES: RolDefinicion[] = [
     permisos: {
       puede_ganar: true,
       puede_comprar: true,
-      puede_foto_maquina: true,
+      puede_foto_maquina: false,
       puede_ver_movimientos: true,
       puede_ver_cierre: true,
       puede_ver_dashboard: true,
@@ -159,7 +159,19 @@ export const StorageService = {
     }
     try {
       const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : ROLES_INICIALES
+      const roles = Array.isArray(parsed) && parsed.length > 0 ? parsed : ROLES_INICIALES
+      return roles.map((r: RolDefinicion) => {
+        if (r.id === 'socio') {
+          return {
+            ...r,
+            permisos: {
+              ...r.permisos,
+              puede_foto_maquina: false,
+            },
+          }
+        }
+        return r
+      })
     } catch {
       return ROLES_INICIALES
     }

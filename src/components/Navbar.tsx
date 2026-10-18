@@ -187,8 +187,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Botón Foto Máquina si tiene permiso */}
-            {permisos.puede_foto_maquina && (
+            {/* Botón Foto Máquina solo para operador */}
+            {permisos.puede_foto_maquina && !permisos.puede_ganar && !permisos.puede_comprar && (
               <button
                 onClick={onAbrirFotoMaquina}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"

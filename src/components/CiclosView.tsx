@@ -23,10 +23,18 @@ interface CiclosViewProps {
 
 export const CiclosView: React.FC<CiclosViewProps> = ({
   ciclos,
+  usuarioActual,
   onAbrirIniciarCiclo,
   onVerDetalleCiclo,
   onAbrirCerrarAbastecimiento,
 }) => {
+  const puedeIniciarCiclo = Boolean(
+    usuarioActual &&
+      (usuarioActual.rol === 'Operador de Máquina' ||
+        usuarioActual.rol_id === 'operador' ||
+        usuarioActual.rol === 'Administrador' ||
+        usuarioActual.rol_id === 'admin')
+  )
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'ABASTECIMIENTO' | 'GANANCIA' | 'activos' | 'cerrados'>('todos')
   const cicloActivo = useMemo(() => ciclos.find((c) => c.estado !== 'CERRADO') || null, [ciclos])
 
@@ -69,7 +77,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
           </p>
         </div>
 
-        {!cicloActivo && (
+        {!cicloActivo && puedeIniciarCiclo && (
           <button
             type="button"
             onClick={onAbrirIniciarCiclo}
