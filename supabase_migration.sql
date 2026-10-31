@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.vending_participantes (
   id TEXT PRIMARY KEY,
   nombre TEXT NOT NULL,
   rol TEXT NOT NULL,
+  rol_id TEXT,
+  pin TEXT DEFAULT '1234',
   es_socio BOOLEAN NOT NULL DEFAULT false,
   activo BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -54,6 +56,7 @@ CREATE TABLE IF NOT EXISTS public.vending_movimientos (
   aportes_adicionales JSONB,
   detalle_productos JSONB,
   movimiento_sobrante_repartido_id TEXT,
+  ciclo_id TEXT,
 
   creado_el TIMESTAMPTZ DEFAULT now()
 );
@@ -121,7 +124,7 @@ CREATE TABLE IF NOT EXISTS public.vending_ciclos (
   hora_inicio TEXT NOT NULL,
   iniciado_por TEXT REFERENCES public.vending_participantes(id) ON DELETE SET NULL,
   iniciado_por_nombre TEXT,
-  foto_antes_url TEXT NOT NULL,
+  foto_antes_url TEXT,
   fotos_antes_urls JSONB,
   observaciones_antes TEXT,
   foto_despues_url TEXT,
@@ -140,4 +143,21 @@ CREATE TABLE IF NOT EXISTS public.vending_ciclos (
 ALTER TABLE public.vending_ciclos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Permitir todo a vending_ciclos" ON public.vending_ciclos;
 CREATE POLICY "Permitir todo a vending_ciclos" ON public.vending_ciclos FOR ALL USING (true) WITH CHECK (true);
+
+-- 9. Histórico de Fotos de Máquina
+CREATE TABLE IF NOT EXISTS public.vending_fotos_maquina (
+  id TEXT PRIMARY KEY,
+  fecha DATE NOT NULL,
+  hora TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('ANTES', 'DESPUES')),
+  foto_url TEXT NOT NULL,
+  observaciones TEXT,
+  registrado_por TEXT REFERENCES public.vending_participantes(id) ON DELETE SET NULL,
+  ciclo_id TEXT,
+  creado_el TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.vending_fotos_maquina ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir todo a vending_fotos_maquina" ON public.vending_fotos_maquina;
+CREATE POLICY "Permitir todo a vending_fotos_maquina" ON public.vending_fotos_maquina FOR ALL USING (true) WITH CHECK (true);
 
