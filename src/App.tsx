@@ -19,6 +19,8 @@ import { ModalDevolucionAportes } from './components/ModalDevolucionAportes'
 import { IniciarCicloModal } from './components/IniciarCicloModal'
 import { CerrarAbastecimientoModal } from './components/CerrarAbastecimientoModal'
 import { DetalleCicloModal } from './components/DetalleCicloModal'
+import { EditarCicloModal } from './components/EditarCicloModal'
+import { EliminarCicloModal } from './components/EliminarCicloModal'
 import { ModalAviso, type ModalAvisoData } from './components/ModalAviso'
 import type {
   ConfigReparto,
@@ -78,6 +80,8 @@ export function App() {
   const [modalIniciarCicloAbierto, setModalIniciarCicloAbierto] = useState(false)
   const [modalCerrarAbastAbierto, setModalCerrarAbastAbierto] = useState(false)
   const [detalleCicloSeleccionado, setDetalleCicloSeleccionado] = useState<CicloMaquina | null>(null)
+  const [cicloAEditar, setCicloAEditar] = useState<CicloMaquina | null>(null)
+  const [cicloAEliminar, setCicloAEliminar] = useState<CicloMaquina | null>(null)
   const [detalleMov, setDetalleMov] = useState<Movimiento | null>(null)
   const [movAAnular, setMovAAnular] = useState<Movimiento | null>(null)
   const [modalFotoAbierto, setModalFotoAbierto] = useState(false)
@@ -305,6 +309,51 @@ export function App() {
       await DataService.updateCiclo(cancelado)
       setCiclos((prev) => prev.map((c) => (c.id === cancelado.id ? cancelado : c)))
     }
+  }
+
+  // Guardar edición completa de un ciclo y sus movimientos
+  const handleGuardarEdicionCiclo = async (
+    cicloActualizado: CicloMaquina,
+    movimientosModificados?: Movimiento[]
+  ) => {
+    await DataService.updateCicloCompleto(cicloActualizado, movimientosModificados)
+    setCiclos((prev) =>
+      prev.map((c) => (c.id === cicloActualizado.id ? cicloActualizado : c))
+    )
+    if (movimientosModificados && movimientosModificados.length > 0) {
+      setMovimientos((prev) => {
+        const modMap = new Map(movimientosModificados.map((m) => [m.id, m]))
+        return prev.map((m) => modMap.get(m.id) || m)
+      })
+    }
+    mostrarAviso({
+      tipo: 'exito',
+      titulo: 'Ciclo Actualizado',
+      mensaje: `El ciclo ${cicloActualizado.codigo} y sus registros vinculados fueron actualizados con éxito.`,
+    })
+  }
+
+  // Confirmar eliminación en cascada de un ciclo
+  const handleConfirmarEliminacionCiclo = async (cicloId: string) => {
+    const cicloAElim = ciclos.find((c) => c.id === cicloId)
+    const codigo = cicloAElim?.codigo || 'seleccionado'
+    const { deletedMovimientoIds } = await DataService.deleteCiclo(cicloId)
+
+    setCiclos((prev) => prev.filter((c) => c.id !== cicloId))
+    setMovimientos((prev) =>
+      prev.filter((m) => !deletedMovimientoIds.includes(m.id) && m.ciclo_id !== cicloId)
+    )
+    setFotosMaquina((prev) => prev.filter((f) => f.ciclo_id !== cicloId))
+
+    if (detalleCicloSeleccionado?.id === cicloId) {
+      setDetalleCicloSeleccionado(null)
+    }
+
+    mostrarAviso({
+      tipo: 'exito',
+      titulo: 'Ciclo Eliminado',
+      mensaje: `El ciclo ${codigo} y ${deletedMovimientoIds.length} movimiento(s) contable(s) vinculados fueron eliminados correctamente. El balance de caja y reportes se recalcularon.`,
+    })
   }
 
   // Triggers para abrir Ganar o Comprar
@@ -743,6 +792,8 @@ export function App() {
           onAbrirCerrarAbastecimiento={() => setModalCerrarAbastAbierto(true)}
           onVerDetalleCiclo={(c) => setDetalleCicloSeleccionado(c)}
           onCancelarCiclo={handleCancelarCiclo}
+          onEditarCiclo={(c) => setCicloAEditar(c)}
+          onEliminarCiclo={(c) => setCicloAEliminar(c)}
         />
       ) : (
         /* VISTA 2: PANEL COMPLETO CON ACCESO CONTROLADO POR ROLES */
@@ -788,6 +839,8 @@ export function App() {
                 onAbrirIniciarCiclo={() => setModalIniciarCicloAbierto(true)}
                 onVerDetalleCiclo={(c) => setDetalleCicloSeleccionado(c)}
                 onAbrirCerrarAbastecimiento={() => setModalCerrarAbastAbierto(true)}
+                onEditarCiclo={(c) => setCicloAEditar(c)}
+                onEliminarCiclo={(c) => setCicloAEliminar(c)}
               />
             )}
 
@@ -980,6 +1033,28 @@ export function App() {
           setDetalleCicloSeleccionado(null)
           setDetalleMov(m)
         }}
+        onEditarCiclo={(c) => setCicloAEditar(c)}
+        onEliminarCiclo={(c) => setCicloAEliminar(c)}
+      />
+
+      {/* Modal Editar Ciclo (con recálculo de movimientos vinculados) */}
+      <EditarCicloModal
+        isOpen={Boolean(cicloAEditar)}
+        onClose={() => setCicloAEditar(null)}
+        ciclo={cicloAEditar}
+        movimientos={movimientos}
+        participantes={participantes}
+        configs={configs}
+        onGuardarEdicion={handleGuardarEdicionCiclo}
+      />
+
+      {/* Modal Eliminar Ciclo (con borrado en cascada) */}
+      <EliminarCicloModal
+        isOpen={Boolean(cicloAEliminar)}
+        onClose={() => setCicloAEliminar(null)}
+        ciclo={cicloAEliminar}
+        movimientos={movimientos}
+        onConfirmarEliminacion={handleConfirmarEliminacionCiclo}
       />
 
       {/* Modal Aviso / Notificaciones Elegantes (Reemplazo nativo de alert()) */}

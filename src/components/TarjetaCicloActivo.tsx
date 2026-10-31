@@ -10,6 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Edit3,
+  Trash2,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -23,6 +25,8 @@ interface TarjetaCicloActivoProps {
   onAbrirGanar?: () => void
   onVerDetalleCiclo?: (ciclo: CicloMaquina) => void
   onCancelarCiclo?: (cicloId: string) => Promise<void>
+  onEditarCiclo?: (ciclo: CicloMaquina) => void
+  onEliminarCiclo?: (ciclo: CicloMaquina) => void
 }
 
 export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
@@ -31,6 +35,8 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
   usuarioActual,
   onVerDetalleCiclo,
   onCancelarCiclo,
+  onEditarCiclo,
+  onEliminarCiclo,
 }) => {
   const [zoomModal, setZoomModal] = useState<{
     fotos: string[]
@@ -119,7 +125,29 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
             </button>
           )}
 
-          {esAdmin && onCancelarCiclo && (
+          {onEditarCiclo && (
+            <button
+              type="button"
+              onClick={() => onEditarCiclo(ciclo)}
+              className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Editar ciclo"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          )}
+
+          {onEliminarCiclo && (
+            <button
+              type="button"
+              onClick={() => onEliminarCiclo(ciclo)}
+              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Eliminar ciclo y movimientos"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+
+          {esAdmin && onCancelarCiclo && !onEliminarCiclo && (
             <button
               type="button"
               onClick={() => {

@@ -393,6 +393,24 @@ export const StorageService = {
     this.saveCiclos(ciclos)
   },
 
+  deleteCiclo(id: string): void {
+    const ciclos = this.getCiclos().filter((c) => c.id !== id)
+    this.saveCiclos(ciclos)
+  },
+
+  deleteMovimientos(ids: string[]): void {
+    if (!ids || ids.length === 0) return
+    const idsSet = new Set(ids)
+    const movs = this.getMovimientos().filter((m) => !idsSet.has(m.id))
+    this.saveMovimientos(movs)
+  },
+
+  deleteFotosPorCiclo(cicloId: string): void {
+    if (!cicloId) return
+    const fotos = this.getFotosMaquina().filter((f) => f.ciclo_id !== cicloId)
+    this.saveFotosMaquina(fotos)
+  },
+
   getCicloActivo(): CicloMaquina | null {
     const ciclos = this.getCiclos()
     return ciclos.find((c) => c.estado !== 'CERRADO') || null
@@ -515,6 +533,7 @@ export const StorageService = {
       roles: this.getRoles(),
       configs: this.getConfigRepartos(),
       movimientos: this.getMovimientos(),
+      ciclos: this.getCiclos(),
       fotosMaquina: this.getFotosMaquina(),
       proveedoresFrecuentes: this.getProveedoresFrecuentes(),
       glosasCompra: this.getGlosasCompraFrecuentes(),
@@ -532,6 +551,7 @@ export const StorageService = {
       if (Array.isArray(data.roles)) this.saveRoles(data.roles)
       if (Array.isArray(data.configs)) this.saveConfigRepartos(data.configs)
       if (Array.isArray(data.movimientos)) this.saveMovimientos(data.movimientos)
+      if (Array.isArray(data.ciclos)) this.saveCiclos(data.ciclos)
       if (Array.isArray(data.fotosMaquina)) this.saveFotosMaquina(data.fotosMaquina)
       if (Array.isArray(data.proveedoresFrecuentes)) this.saveProveedoresFrecuentes(data.proveedoresFrecuentes)
       if (Array.isArray(data.glosasCompra)) this.saveGlosasCompraFrecuentes(data.glosasCompra)

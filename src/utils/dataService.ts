@@ -575,6 +575,8 @@ export const DataService = {
             fecha: actualizado.fecha,
             descripcion: actualizado.descripcion,
             monto_ganado: actualizado.monto_ganado,
+            reparto: actualizado.reparto,
+            snapshot_porcentajes: actualizado.snapshot_porcentajes,
             monto_asignado: actualizado.monto_asignado,
             monto_adicional: actualizado.monto_adicional,
             monto_sobrante: actualizado.monto_sobrante,
@@ -590,6 +592,87 @@ export const DataService = {
           .eq('id', actualizado.id)
       } catch (err) {
         console.warn('Error actualizando movimiento en Supabase', err)
+      }
+    }
+  },
+
+  async deleteCiclo(cicloId: string): Promise<{ deletedMovimientoIds: string[] }> {
+    const todosCiclos = StorageService.getCiclos()
+    const ciclo = todosCiclos.find((c) => c.id === cicloId)
+    const todosMovs = StorageService.getMovimientos()
+
+    // 1. Encontrar todos los movimientos directos e indirectos vinculados al ciclo
+    const directMovIds = new Set<string>()
+    if (ciclo?.movimiento_ids && Array.isArray(ciclo.movimiento_ids)) {
+      ciclo.movimiento_ids.forEach((id) => directMovIds.add(id))
+    }
+    todosMovs.forEach((m) => {
+      if (m.ciclo_id === cicloId) {
+        directMovIds.add(m.id)
+      }
+    })
+
+    // Movimientos secundarios (reparto de sobrante o hijos derivados)
+    const allMovIdsToDelete = new Set<string>(directMovIds)
+    todosMovs.forEach((m) => {
+      if (m.origen_movimiento_id && directMovIds.has(m.origen_movimiento_id)) {
+        allMovIdsToDelete.add(m.id)
+      }
+      if (m.movimiento_sobrante_repartido_id && directMovIds.has(m.movimiento_sobrante_repartido_id)) {
+        allMovIdsToDelete.add(m.id)
+      }
+      if (m.movimiento_sobrante_repartido_id && directMovIds.has(m.id)) {
+        allMovIdsToDelete.add(m.movimiento_sobrante_repartido_id)
+      }
+    })
+
+    const deletedMovimientoIds = Array.from(allMovIdsToDelete)
+
+    // 2. Eliminar de almacenamiento local
+    StorageService.deleteCiclo(cicloId)
+    if (deletedMovimientoIds.length > 0) {
+      StorageService.deleteMovimientos(deletedMovimientoIds)
+    }
+    StorageService.deleteFotosPorCiclo(cicloId)
+
+    // 3. Eliminar de Supabase en cascada
+    if (supabase && isSupabaseConfigured) {
+      try {
+        if (deletedMovimientoIds.length > 0) {
+          const { error: movErr } = await supabase
+            .from('vending_movimientos')
+            .delete()
+            .in('id', deletedMovimientoIds)
+          if (movErr) console.warn('Error eliminando movimientos del ciclo en Supabase:', movErr)
+        }
+
+        const { error: cicloErr } = await supabase
+          .from('vending_ciclos')
+          .delete()
+          .eq('id', cicloId)
+        if (cicloErr) console.warn('Error eliminando ciclo en Supabase:', cicloErr)
+
+        const { error: fotoErr } = await supabase
+          .from('vending_fotos_maquina')
+          .delete()
+          .eq('ciclo_id', cicloId)
+        if (fotoErr) console.warn('Error eliminando fotos del ciclo en Supabase:', fotoErr)
+      } catch (err) {
+        console.warn('Error en borrado en cascada en Supabase', err)
+      }
+    }
+
+    return { deletedMovimientoIds }
+  },
+
+  async updateCicloCompleto(
+    ciclo: CicloMaquina,
+    movimientosModificados?: Movimiento[]
+  ): Promise<void> {
+    await this.updateCiclo(ciclo)
+    if (movimientosModificados && movimientosModificados.length > 0) {
+      for (const mov of movimientosModificados) {
+        await this.updateMovimiento(mov)
       }
     }
   },

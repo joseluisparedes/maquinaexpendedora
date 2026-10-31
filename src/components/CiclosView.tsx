@@ -8,6 +8,8 @@ import {
   Camera,
   ArrowRight,
   Plus,
+  Edit3,
+  Trash2,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -20,6 +22,8 @@ interface CiclosViewProps {
   onAbrirIniciarCiclo: () => void
   onVerDetalleCiclo: (ciclo: CicloMaquina) => void
   onAbrirCerrarAbastecimiento?: (ciclo: CicloMaquina) => void
+  onEditarCiclo?: (ciclo: CicloMaquina) => void
+  onEliminarCiclo?: (ciclo: CicloMaquina) => void
 }
 
 export const CiclosView: React.FC<CiclosViewProps> = ({
@@ -29,6 +33,8 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
   onAbrirIniciarCiclo,
   onVerDetalleCiclo,
   onAbrirCerrarAbastecimiento,
+  onEditarCiclo,
+  onEliminarCiclo,
 }) => {
   const puedeIniciarCiclo = Boolean(
     usuarioActual &&
@@ -272,6 +278,30 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                     >
                       Ver Detalle
                     </button>
+
+                    {onEditarCiclo && (
+                      <button
+                        type="button"
+                        onClick={() => onEditarCiclo(c)}
+                        className="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                        title="Editar ciclo y movimientos"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </button>
+                    )}
+
+                    {onEliminarCiclo && (
+                      <button
+                        type="button"
+                        onClick={() => onEliminarCiclo(c)}
+                        className="p-1.5 sm:px-2.5 sm:py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                        title="Eliminar ciclo y movimientos en cascada"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Eliminar</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

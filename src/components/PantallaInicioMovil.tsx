@@ -46,6 +46,8 @@ interface PantallaInicioMovilProps {
   onAbrirCerrarAbastecimiento?: () => void
   onVerDetalleCiclo?: (c: CicloMaquina) => void
   onCancelarCiclo?: (cicloId: string) => Promise<void>
+  onEditarCiclo?: (c: CicloMaquina) => void
+  onEliminarCiclo?: (c: CicloMaquina) => void
 }
 
 export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
@@ -73,6 +75,8 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
   onAbrirCerrarAbastecimiento,
   onVerDetalleCiclo,
   onCancelarCiclo,
+  onEditarCiclo,
+  onEliminarCiclo,
 }) => {
   const ultimosMovimientos = movimientos.slice(0, 3)
   const esOperador = !permisos.puede_ganar && !permisos.puede_comprar && permisos.puede_foto_maquina
@@ -188,6 +192,8 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                   usuarioActual={usuarioActual}
                   onVerDetalleCiclo={onVerDetalleCiclo}
                   onCancelarCiclo={onCancelarCiclo}
+                  onEditarCiclo={onEditarCiclo}
+                  onEliminarCiclo={onEliminarCiclo}
                 />
 
                 {cicloActivo.tipo === 'ABASTECIMIENTO' ? (
@@ -402,6 +408,8 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
                   usuarioActual={usuarioActual}
                   onVerDetalleCiclo={onVerDetalleCiclo}
                   onCancelarCiclo={onCancelarCiclo}
+                  onEditarCiclo={onEditarCiclo}
+                  onEliminarCiclo={onEliminarCiclo}
                 />
 
                 {/* BOTÓN DE ACCIÓN ÚNICO SEGÚN EL TIPO DE CICLO ABIERTO */}

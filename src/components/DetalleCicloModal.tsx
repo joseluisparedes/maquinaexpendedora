@@ -12,6 +12,8 @@ import {
   PackageCheck,
   Coins,
   Sparkles,
+  Edit3,
+  Trash2,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -23,6 +25,8 @@ interface DetalleCicloModalProps {
   movimientos: Movimiento[]
   participantes?: Participante[]
   onVerMovimiento?: (m: Movimiento) => void
+  onEditarCiclo?: (ciclo: CicloMaquina) => void
+  onEliminarCiclo?: (ciclo: CicloMaquina) => void
 }
 
 export const DetalleCicloModal: React.FC<DetalleCicloModalProps> = ({
@@ -32,6 +36,8 @@ export const DetalleCicloModal: React.FC<DetalleCicloModalProps> = ({
   movimientos,
   participantes = [],
   onVerMovimiento,
+  onEditarCiclo,
+  onEliminarCiclo,
 }) => {
   const [tabActiva, setTabActiva] = useState<'fotos' | 'finanzas' | 'timeline'>('fotos')
   const [fotoAntesIndex, setFotoAntesIndex] = useState(0)
@@ -650,9 +656,34 @@ export const DetalleCicloModal: React.FC<DetalleCicloModalProps> = ({
         </div>
 
         {/* Pie del modal */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-          <div className="text-[11px] text-slate-500 font-medium">
-            Máquina Expendedora • Ciclo {ciclo.codigo}
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {onEditarCiclo && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onEditarCiclo(ciclo)
+                }}
+                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Editar Ciclo</span>
+              </button>
+            )}
+            {onEliminarCiclo && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onEliminarCiclo(ciclo)
+                }}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Eliminar Ciclo</span>
+              </button>
+            )}
           </div>
           <button
             type="button"
