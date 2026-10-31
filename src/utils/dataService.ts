@@ -210,6 +210,7 @@ export const DataService = {
           detalle_productos: row.detalle_productos,
           movimiento_sobrante_repartido_id: row.movimiento_sobrante_repartido_id,
           creado_el: row.creado_el,
+          ciclo_id: row.ciclo_id || undefined,
         }
       }) as Movimiento[]
     } catch {
@@ -262,6 +263,7 @@ export const DataService = {
           detalle_productos: mov.detalle_productos,
           movimiento_sobrante_repartido_id: mov.movimiento_sobrante_repartido_id,
           creado_el: mov.creado_el,
+          ciclo_id: mov.ciclo_id || null,
         })
       } catch (err) {
         console.warn('No se pudo guardar movimiento en Supabase', err)
@@ -364,17 +366,55 @@ export const DataService = {
   },
 
   async getFotosMaquina(): Promise<FotoMaquina[]> {
-    return StorageService.getFotosMaquina()
+    const locales = StorageService.getFotosMaquina()
+    if (!supabase || !isSupabaseConfigured) {
+      return locales
+    }
+    try {
+      const { data, error } = await supabase
+        .from('vending_fotos_maquina')
+        .select('*')
+        .order('creado_el', { ascending: false })
+
+      if (error || !data) {
+        return locales
+      }
+
+      const mapa = new Map<string, FotoMaquina>()
+      data.forEach((f: any) => mapa.set(f.id, f as FotoMaquina))
+      for (const loc of locales) {
+        if (!mapa.has(loc.id)) {
+          mapa.set(loc.id, loc)
+          supabase.from('vending_fotos_maquina').insert(loc).then(() => {})
+        }
+      }
+
+      const merged = Array.from(mapa.values()).sort(
+        (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
+      )
+      StorageService.saveFotosMaquina(merged)
+      return merged
+    } catch {
+      return locales
+    }
   },
 
   async saveFotoMaquina(foto: FotoMaquina): Promise<void> {
     StorageService.addFotoMaquina(foto)
+    if (supabase && isSupabaseConfigured) {
+      try {
+        await supabase.from('vending_fotos_maquina').insert(foto)
+      } catch (err) {
+        console.warn('No se pudo guardar foto de maquina en Supabase (usando local)', err)
+      }
+    }
   },
 
   // Métodos para Ciclos de Máquina (Journeys)
   async getCiclos(): Promise<CicloMaquina[]> {
+    const locales = StorageService.getCiclos()
     if (!supabase || !isSupabaseConfigured) {
-      return StorageService.getCiclos()
+      return locales
     }
     try {
       const { data, error } = await supabase
@@ -382,10 +422,11 @@ export const DataService = {
         .select('*')
         .order('creado_el', { ascending: false })
 
-      if (error || !data || data.length === 0) {
-        return StorageService.getCiclos()
+      if (error || !data) {
+        return locales
       }
-      return data.map((row: any) => {
+
+      const remotas = data.map((row: any) => {
         let fotosAntes: string[] = []
         if (Array.isArray(row.fotos_antes_urls)) {
           fotosAntes = row.fotos_antes_urls
@@ -428,6 +469,18 @@ export const DataService = {
           }
         }
 
+        let movIds: string[] = []
+        if (Array.isArray(row.movimiento_ids)) {
+          movIds = row.movimiento_ids
+        } else if (typeof row.movimiento_ids === 'string') {
+          try {
+            const p = JSON.parse(row.movimiento_ids)
+            if (Array.isArray(p)) movIds = p
+          } catch {
+            if (row.movimiento_ids) movIds = [row.movimiento_ids]
+          }
+        }
+
         return {
           ...row,
           foto_antes_url: fotosAntes[0] || row.foto_antes_url || '',
@@ -440,10 +493,28 @@ export const DataService = {
               : row.foto_despues_url
               ? [row.foto_despues_url]
               : undefined,
+          movimiento_ids: movIds,
+          monto_involucrado: row.monto_involucrado ? Number(row.monto_involucrado) : undefined,
         } as CicloMaquina
       })
+
+      // Fusionar ciclos remotos y locales para evitar pérdida de datos
+      const mapa = new Map<string, CicloMaquina>()
+      remotas.forEach((c) => mapa.set(c.id, c))
+      for (const loc of locales) {
+        if (!mapa.has(loc.id)) {
+          mapa.set(loc.id, loc)
+          supabase.from('vending_ciclos').insert(loc).then(() => {})
+        }
+      }
+
+      const merged = Array.from(mapa.values()).sort(
+        (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
+      )
+      StorageService.saveCiclos(merged)
+      return merged
     } catch {
-      return StorageService.getCiclos()
+      return locales
     }
   },
 
@@ -451,7 +522,10 @@ export const DataService = {
     StorageService.addCiclo(ciclo)
     if (supabase && isSupabaseConfigured) {
       try {
-        await supabase.from('vending_ciclos').insert(ciclo)
+        const { error } = await supabase.from('vending_ciclos').insert(ciclo)
+        if (error) {
+          console.warn('Error guardando ciclo en Supabase (usando local):', error)
+        }
       } catch (err) {
         console.warn('No se pudo guardar ciclo en Supabase (usando local)', err)
       }
@@ -462,10 +536,13 @@ export const DataService = {
     StorageService.updateCiclo(actualizado)
     if (supabase && isSupabaseConfigured) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('vending_ciclos')
           .update(actualizado)
           .eq('id', actualizado.id)
+        if (error) {
+          console.warn('Error actualizando ciclo en Supabase (usando local):', error)
+        }
       } catch (err) {
         console.warn('No se pudo actualizar ciclo en Supabase (usando local)', err)
       }
@@ -508,6 +585,7 @@ export const DataService = {
             aportes_adicionales: actualizado.aportes_adicionales,
             registrado_por: actualizado.registrado_por,
             comprobante_url: serializedComprobantes,
+            ciclo_id: actualizado.ciclo_id || null,
           })
           .eq('id', actualizado.id)
       } catch (err) {

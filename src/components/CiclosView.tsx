@@ -280,8 +280,12 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                   <div className="flex items-center gap-3">
                     {/* Miniatura Foto Antes */}
                     <div className="flex items-center gap-2">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shrink-0">
-                        <img src={c.foto_antes_url} alt="Antes" className="w-full h-full object-cover" />
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 flex items-center justify-center text-slate-400">
+                        {c.foto_antes_url ? (
+                          <img src={c.foto_antes_url} alt="Antes" className="w-full h-full object-cover" />
+                        ) : (
+                          <Camera className="w-5 h-5" />
+                        )}
                         {cantFotosAntes > 1 && (
                           <span className="absolute bottom-0 right-0 bg-slate-950/80 text-white text-[8px] font-black px-1 rounded-tl">
                             +{cantFotosAntes - 1}
@@ -290,7 +294,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                       </div>
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                          Foto Antes {cantFotosAntes > 1 && <span className="text-indigo-600 font-extrabold">({cantFotosAntes})</span>}
+                          Foto Antes {cantFotosAntes > 0 && <span className="text-indigo-600 font-extrabold">({cantFotosAntes})</span>}
                         </span>
                         <span className="text-[11px] text-slate-700 font-semibold">{c.hora_inicio}</span>
                       </div>

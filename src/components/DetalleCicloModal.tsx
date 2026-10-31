@@ -58,14 +58,14 @@ export const DetalleCicloModal: React.FC<DetalleCicloModalProps> = ({
   // Lista de fotos antes y después seguras
   const listaFotosAntes: string[] =
     ciclo.fotos_antes_urls && ciclo.fotos_antes_urls.length > 0
-      ? ciclo.fotos_antes_urls
+      ? ciclo.fotos_antes_urls.filter(Boolean)
       : ciclo.foto_antes_url
       ? [ciclo.foto_antes_url]
       : []
 
   const listaFotosDespues: string[] =
     ciclo.fotos_despues_urls && ciclo.fotos_despues_urls.length > 0
-      ? ciclo.fotos_despues_urls
+      ? ciclo.fotos_despues_urls.filter(Boolean)
       : ciclo.foto_despues_url
       ? [ciclo.foto_despues_url]
       : []

@@ -50,14 +50,14 @@ export const TarjetaCicloActivo: React.FC<TarjetaCicloActivoProps> = ({
 
   const fotosAntes =
     ciclo.fotos_antes_urls && ciclo.fotos_antes_urls.length > 0
-      ? ciclo.fotos_antes_urls
+      ? ciclo.fotos_antes_urls.filter(Boolean)
       : ciclo.foto_antes_url
       ? [ciclo.foto_antes_url]
       : []
 
   const fotosDespues =
     ciclo.fotos_despues_urls && ciclo.fotos_despues_urls.length > 0
-      ? ciclo.fotos_despues_urls
+      ? ciclo.fotos_despues_urls.filter(Boolean)
       : ciclo.foto_despues_url
       ? [ciclo.foto_despues_url]
       : []
