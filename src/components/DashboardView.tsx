@@ -177,76 +177,76 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Tarjetas KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Tarjetas KPI Responsivas (2x2 en celular, 4 en escritorio) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Ganado */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Ganado (Bruto)
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">
+              Ganado (Bruto)
             </span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-              <TrendingUp className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-black text-slate-900 tracking-tight">
+          <div className="mt-2 sm:mt-3">
+            <p className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight font-mono">
               {formatearMoneda(balance.totalGanado)}
             </p>
-            <p className="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              Recaudación acumulada del periodo
+            <p className="text-[10px] sm:text-xs text-emerald-600 font-medium mt-0.5 sm:mt-1 flex items-center gap-0.5 truncate">
+              <ArrowUpRight className="w-3 h-3 shrink-0" />
+              Recaudación
             </p>
           </div>
         </div>
 
         {/* Total Gastado */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Comprado (Gastos)
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">
+              Comprado (Gastos)
             </span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-              <TrendingDown className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 rounded-xl bg-amber-50 text-amber-600 shrink-0">
+              <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-black text-slate-900 tracking-tight">
+          <div className="mt-2 sm:mt-3">
+            <p className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight font-mono">
               {formatearMoneda(balance.totalGastado)}
             </p>
-            <p className="text-xs text-amber-600 font-medium mt-1 flex items-center gap-1">
-              <ArrowDownRight className="w-3.5 h-3.5" />
-              Costo real de productos comprados
+            <p className="text-[10px] sm:text-xs text-amber-600 font-medium mt-0.5 sm:mt-1 flex items-center gap-0.5 truncate">
+              <ArrowDownRight className="w-3 h-3 shrink-0" />
+              Mercadería
             </p>
           </div>
         </div>
 
         {/* Resultado Neto */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Resultado Neto (Utilidad)
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider truncate">
+              Utilidad Neta
             </span>
             <div
-              className={`p-2 rounded-xl ${
+              className={`p-1.5 sm:p-2 rounded-xl shrink-0 ${
                 balance.resultadoNeto >= 0
                   ? 'bg-indigo-50 text-indigo-600'
                   : 'bg-rose-50 text-rose-600'
               }`}
             >
-              <Scale className="w-5 h-5" />
+              <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2 sm:mt-3">
             <p
-              className={`text-2xl font-black tracking-tight ${
+              className={`text-lg sm:text-2xl font-black tracking-tight font-mono ${
                 balance.resultadoNeto >= 0 ? 'text-indigo-900' : 'text-rose-600'
               }`}
             >
               {formatearMoneda(balance.resultadoNeto)}
             </p>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Ganado ({formatearMoneda(balance.totalGanado)}) − Gastado ({formatearMoneda(balance.totalGastado)})
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5 sm:mt-1 truncate">
+              Ganado − Gastado
             </p>
           </div>
         </div>
@@ -254,70 +254,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Saldo en Caja */}
         <div
           onClick={onAbrirDetalleCaja}
-          className={`bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md relative overflow-hidden transition-all border border-indigo-500/20 ${
+          className={`bg-gradient-to-br from-slate-900 to-indigo-950 text-white p-3.5 sm:p-5 rounded-2xl shadow-md relative overflow-hidden transition-all border border-indigo-500/20 flex flex-col justify-between ${
             onAbrirDetalleCaja
               ? 'cursor-pointer hover:border-indigo-400 hover:shadow-lg active:scale-[0.99] group'
               : ''
           }`}
           title={onAbrirDetalleCaja ? 'Haz clic para ver el detalle y arqueo de caja' : undefined}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
-              Saldo Disponible en Caja
-              {onAbrirDetalleCaja && (
-                <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.2 rounded-full font-normal group-hover:bg-white/30 transition-colors">
-                  Ver detalle
-                </span>
-              )}
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[10px] sm:text-xs font-bold text-indigo-200 uppercase tracking-wider truncate">
+              Saldo en Caja
             </span>
-            <div className="p-2 rounded-xl bg-white/10 text-white group-hover:scale-110 transition-transform">
-              <Wallet className="w-5 h-5 text-emerald-400" />
+            <div className="p-1.5 sm:p-2 rounded-xl bg-white/10 text-white shrink-0 group-hover:scale-110 transition-transform">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
             </div>
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-black tracking-tight text-white">
+          <div className="mt-2 sm:mt-3">
+            <p className="text-lg sm:text-2xl font-black tracking-tight text-white font-mono">
               {formatearMoneda(balance.saldoCaja)}
             </p>
-            <p className="text-xs text-indigo-200 font-medium mt-1">
-              Dinero disponible para próximas compras
+            <p className="text-[10px] sm:text-xs text-indigo-200/90 font-medium mt-0.5 sm:mt-1 truncate">
+              Fondo compras
             </p>
           </div>
         </div>
       </div>
 
       {/* Sub-indicadores secundarios */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Aportes Adicionales Puestos</p>
-            <p className="text-lg font-bold text-slate-800">{formatearMoneda(balance.totalAdicionalAportado)}</p>
-            <p className="text-[11px] text-slate-500">Puesto de bolsillo en compras</p>
+            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Aportes Puestos</p>
+            <p className="text-base sm:text-lg font-bold text-slate-800">{formatearMoneda(balance.totalAdicionalAportado)}</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400">Puesto extra en compras</p>
           </div>
-          <div className="p-2 rounded-lg bg-orange-50 text-orange-600">
+          <div className="p-2 rounded-xl bg-orange-50 text-orange-600">
             <BadgeAlert className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Aportes Pendientes por Devolver</p>
-            <p className={`text-lg font-bold ${balance.totalAportesPendientes > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
+            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Aportes por Devolver</p>
+            <p className={`text-base sm:text-lg font-bold ${balance.totalAportesPendientes > 0 ? 'text-amber-600' : 'text-slate-800'}`}>
               {formatearMoneda(balance.totalAportesPendientes)}
             </p>
-            <p className="text-[11px] text-slate-500">Por reconocer a quien puso extra</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400">Por reintegrar a socios</p>
           </div>
-          <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
+          <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
             <PiggyBank className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase">Sobrantes Devueltos a Caja</p>
-            <p className="text-lg font-bold text-emerald-700">{formatearMoneda(balance.totalSobrantesCaja)}</p>
-            <p className="text-[11px] text-slate-500">Reincorporados al fondo común</p>
+            <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase">Sobrantes en Caja</p>
+            <p className="text-base sm:text-lg font-bold text-emerald-700">{formatearMoneda(balance.totalSobrantesCaja)}</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400">Reincorporados al fondo</p>
           </div>
-          <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
             <TrendingUp className="w-5 h-5" />
           </div>
         </div>

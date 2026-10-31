@@ -97,55 +97,55 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
         )}
       </div>
 
-      {/* Métricas Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+      {/* Métricas Resumen Compactas y Responsivas */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-              Estado de la Máquina
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
+              Máquina
             </span>
             <span
-              className={`text-sm font-black mt-1 block ${
+              className={`text-xs sm:text-sm font-black mt-0.5 block truncate ${
                 cicloActivo ? 'text-amber-600' : 'text-emerald-600'
               }`}
             >
-              {cicloActivo ? `En Ciclo (${cicloActivo.codigo})` : 'Operando Normal (Libre)'}
+              {cicloActivo ? cicloActivo.codigo : 'Libre'}
             </span>
           </div>
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            className={`w-7 h-7 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 self-end sm:self-auto ${
               cicloActivo ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-emerald-100 text-emerald-700'
             }`}
           >
-            {cicloActivo ? <Clock className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+            {cicloActivo ? <Clock className="w-4 h-4 sm:w-5 sm:h-5" /> : <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />}
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-              Abastecimientos Cerrados
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
+              Abastos
             </span>
-            <span className="text-lg font-black text-amber-700 mt-0.5 block">
-              {totalAbastecimientos} ciclos
+            <span className="text-sm sm:text-lg font-black text-amber-700 mt-0.5 block">
+              {totalAbastecimientos}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <ShoppingBag className="w-5 h-5" />
+          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 self-end sm:self-auto">
+            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-              Recaudaciones Cerradas
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block truncate">
+              Ganancias
             </span>
-            <span className="text-lg font-black text-emerald-700 mt-0.5 block">
-              {totalGanancias} ciclos
+            <span className="text-sm sm:text-lg font-black text-emerald-700 mt-0.5 block">
+              {totalGanancias}
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5" />
+          <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 self-end sm:self-auto">
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
         </div>
       </div>
@@ -260,12 +260,12 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start sm:self-center">
+                  <div className="flex items-center gap-1.5 self-end sm:self-center flex-wrap justify-end">
                     {!cerrado && esAbast && c.movimiento_ids && c.movimiento_ids.length > 0 && onAbrirCerrarAbastecimiento && (
                       <button
                         type="button"
                         onClick={() => onAbrirCerrarAbastecimiento(c)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
                       >
                         Subir Foto Final
                       </button>
@@ -274,7 +274,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onVerDetalleCiclo(c)}
-                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
                     >
                       Ver Detalle
                     </button>
@@ -283,7 +283,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onEditarCiclo(c)}
-                        className="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                        className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
                         title="Editar ciclo y movimientos"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -295,7 +295,7 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onEliminarCiclo(c)}
-                        className="p-1.5 sm:px-2.5 sm:py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                        className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1"
                         title="Eliminar ciclo y movimientos en cascada"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

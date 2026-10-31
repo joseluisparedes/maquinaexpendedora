@@ -1,16 +1,35 @@
 @import "tailwindcss";
 
 @layer base {
-  body {
+  html, body {
     @apply bg-slate-50 text-slate-900 antialiased font-sans selection:bg-indigo-500 selection:text-white;
     min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  /* Evitar zoom automático intrusivo en inputs en iOS Safari */
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Soporte para safe area en dispositivos móviles (iPhone notch y dynamic island) */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+.pt-safe {
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0.5rem));
 }
 
 /* Custom scrollbars and utility styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

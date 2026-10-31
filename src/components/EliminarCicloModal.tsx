@@ -40,11 +40,13 @@ export const EliminarCicloModal: React.FC<EliminarCicloModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl border-t sm:border border-slate-200 max-w-md w-full overflow-hidden pb-safe animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95">
+        {/* Handle visual móvil */}
+        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1 sm:hidden shrink-0" />
         
         {/* Cabecera */}
-        <div className="px-5 sm:px-6 py-4 border-b border-rose-100 bg-rose-50/70 flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-rose-100 bg-rose-50/70 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5 stroke-[2.5]" />

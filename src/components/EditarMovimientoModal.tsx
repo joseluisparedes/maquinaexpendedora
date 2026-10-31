@@ -190,10 +190,13 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl border-t sm:border border-slate-200 max-w-xl w-full max-h-[92dvh] sm:max-h-[90vh] flex flex-col pb-safe overflow-hidden animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95">
+        {/* Handle visual móvil */}
+        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1 sm:hidden shrink-0" />
+
         {/* Cabecera */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shrink-0">
+        <div className="px-5 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white">
               {esGanar ? (

@@ -86,12 +86,14 @@ export const DetalleCicloModal: React.FC<DetalleCicloModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl border-t sm:border border-slate-200 max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-hidden flex flex-col pb-safe animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95">
+        {/* Handle visual móvil */}
+        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1 sm:hidden shrink-0" />
         
         {/* Cabecera del Ciclo con estilo ejecutivo */}
         <div
-          className={`px-5 sm:px-6 py-4 border-b flex items-center justify-between ${
+          className={`px-4 sm:px-6 py-3.5 sm:py-4 border-b flex items-center justify-between shrink-0 ${
             esAbastecimiento
               ? 'bg-gradient-to-r from-amber-500/15 via-orange-500/5 to-slate-50 border-amber-100'
               : 'bg-gradient-to-r from-emerald-500/15 via-teal-500/5 to-slate-50 border-emerald-100'

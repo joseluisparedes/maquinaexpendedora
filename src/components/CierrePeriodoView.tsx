@@ -154,10 +154,10 @@ export const CierrePeriodoView: React.FC<CierrePeriodoViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleCopiarWhatsApp}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer active:scale-95"
           >
             {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copiado ? '¡Copiado!' : 'Copiar para WhatsApp'}
@@ -165,7 +165,7 @@ export const CierrePeriodoView: React.FC<CierrePeriodoViewProps> = ({
 
           <button
             onClick={handleImprimir}
-            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer active:scale-95"
           >
             <Printer className="w-4 h-4" />
             Imprimir / PDF

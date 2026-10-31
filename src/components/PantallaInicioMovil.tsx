@@ -95,7 +95,7 @@ export const PantallaInicioMovil: React.FC<PantallaInicioMovilProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-black text-slate-900 text-xs tracking-tight">
-                  Finanzas Vending
+                  Máquina Expendedora
                 </span>
                 {conectadoSupabase ? (
                   <span className="inline-flex items-center gap-0.5 text-[8px] font-bold bg-emerald-50 text-emerald-700 px-1 py-0.2 rounded-full border border-emerald-200">

@@ -257,9 +257,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs (filtradas por permisos de rol) */}
+        {/* Navigation Tabs en Escritorio (filtradas por permisos de rol) */}
         {tabs.length > 0 && (
-          <div className="flex overflow-x-auto space-x-1 sm:space-x-4 border-t border-slate-100 py-2 scrollbar-none">
+          <div className="hidden md:flex overflow-x-auto space-x-1 sm:space-x-4 border-t border-slate-100 py-2 scrollbar-none">
             {tabs.map((tab) => {
               const Icon = tab.icon
               const activo = vistaActual === tab.id

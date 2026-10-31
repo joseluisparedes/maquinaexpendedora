@@ -415,8 +415,9 @@ export const ParticipantesView: React.FC<ParticipantesViewProps> = ({
 
       {/* MODAL 1: CREAR NUEVA PERSONA */}
       {modalNuevoUsuario && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-[32px] sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 pb-safe animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95">
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-1 sm:hidden shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-indigo-600" />
@@ -516,8 +517,9 @@ export const ParticipantesView: React.FC<ParticipantesViewProps> = ({
 
       {/* MODAL 2: CREAR NUEVO ROL */}
       {modalNuevoRol && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-[32px] sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 pb-safe animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95">
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-1 sm:hidden shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-600" />

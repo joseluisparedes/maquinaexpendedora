@@ -64,7 +64,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 flex flex-col justify-between p-4 sm:p-6 text-white font-sans">
+    <div className="min-h-screen min-h-[100dvh] bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 flex flex-col justify-between p-4 sm:p-6 pt-safe pb-safe text-white font-sans">
       {/* Header / Logo */}
       <div className="max-w-md w-full mx-auto text-center pt-6 sm:pt-10">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30 mb-3">

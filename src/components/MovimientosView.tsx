@@ -241,182 +241,344 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">Código / Fecha</th>
-                  <th className="py-3 px-4">Tipo</th>
-                  <th className="py-3 px-4">Descripción / Proveedor</th>
-                  <th className="py-3 px-4">Registrado Por</th>
-                  <th className="py-3 px-4 text-right">Monto Total</th>
-                  <th className="py-3 px-4">Estado</th>
-                  <th className="py-3 px-4 text-center">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {movimientosFiltrados.map((mov) => {
-                  const regPor = participantesMap.get(mov.registrado_por)?.nombre || mov.registrado_por
-                  const esAnulado = mov.estado === 'ANULADO'
-                  const esGanar = mov.tipo === 'GANAR'
+          <>
+            {/* VISTA MÓVIL: Tarjetas Nativas para Celular */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {movimientosFiltrados.map((mov) => {
+                const regPor = participantesMap.get(mov.registrado_por)?.nombre || mov.registrado_por
+                const esAnulado = mov.estado === 'ANULADO'
+                const esGanar = mov.tipo === 'GANAR'
+                const estaDevuelto = Boolean(
+                  mov.aporte_devuelto ||
+                  (mov.aportes_adicionales && mov.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
+                )
+                const nombreSocio = mov.quien_aporto_adicional
+                  ? participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional
+                  : 'Socio'
 
-                  return (
-                    <tr
-                      key={mov.id}
-                      className={`hover:bg-slate-50/70 transition-colors ${
-                        esAnulado ? 'opacity-60 bg-slate-50/40' : ''
-                      }`}
-                    >
-                      <td className="py-3.5 px-4">
-                        <div className="font-mono font-bold text-slate-900">{mov.codigo}</div>
-                        <div className="text-[11px] text-slate-500">{mov.fecha}</div>
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {esGanar ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <ArrowUpRight className="w-3 h-3 text-emerald-600" />
-                            Ganar
+                return (
+                  <div
+                    key={mov.id}
+                    onClick={() => onVerDetalle(mov)}
+                    className={`p-3.5 space-y-2 active:bg-slate-50 transition-colors cursor-pointer ${
+                      esAnulado ? 'opacity-60 bg-slate-50/40' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                            esGanar ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {esGanar ? (
+                            <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+                          ) : (
+                            <ArrowDownRight className="w-4 h-4 stroke-[2.5]" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono text-xs font-black text-slate-900">{mov.codigo}</span>
+                            <span
+                              className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                                esAnulado
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : esGanar
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : 'bg-amber-50 text-amber-800'
+                              }`}
+                            >
+                              {esAnulado ? 'Anulado' : mov.tipo}
+                            </span>
                             {mov.origen_ganancia === 'SOBRANTE_COMPRA' && (
-                              <span className="ml-1 text-[9px] bg-emerald-200 text-emerald-800 px-1 rounded">
+                              <span className="text-[9px] bg-emerald-200 text-emerald-900 px-1 rounded font-bold">
                                 Sobrante
                               </span>
                             )}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            <ArrowDownRight className="w-3 h-3 text-amber-600" />
-                            Comprar
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <p className="font-medium text-slate-800 truncate" title={mov.descripcion}>
-                          {mov.descripcion || 'Sin descripción'}
-                        </p>
-                        {mov.proveedor && (
-                          <p className="text-[11px] text-indigo-600 truncate">
-                            Prov: {mov.proveedor}
-                          </p>
-                        )}
-                        {esAnulado && mov.motivo_anulacion && (
-                          <p className="text-[11px] text-rose-600 italic">
-                            Motivo anulación: {mov.motivo_anulacion}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">{regPor}</td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        {esGanar ? (
-                          <div>
-                            <span className="font-black text-sm text-emerald-700">
-                              +{formatearMoneda(mov.monto_ganado || 0)}
-                            </span>
-                            <div className="text-[10px] text-slate-400">
-                              {mov.reparto ? `${mov.reparto.length} participantes` : 'Sin reparto'}
-                            </div>
                           </div>
-                        ) : (
-                          <div>
-                            <span className="font-black text-sm text-slate-900">
-                              {formatearMoneda(mov.total_gastado || 0)}
-                            </span>
-                            <div className="text-[10px] text-slate-500">
-                              Asignado caja: {formatearMoneda(mov.monto_asignado || 0)}
-                            </div>
-                            {(mov.monto_adicional || 0) > 0 && (() => {
-                              const estaDevuelto = Boolean(
-                                mov.aporte_devuelto ||
-                                (mov.aportes_adicionales && mov.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
-                              )
-                              const nombreSocio = mov.quien_aporto_adicional
-                                ? participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional
-                                : 'Socio'
+                          <span className="text-[10px] text-slate-400 block">{mov.fecha}</span>
+                        </div>
+                      </div>
 
-                              return (
-                                <div
-                                  className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border shadow-2xs ${
-                                    estaDevuelto
-                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                                      : 'bg-amber-100 text-amber-900 border-amber-300'
-                                  }`}
-                                >
-                                  {estaDevuelto ? (
-                                    <>
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                                      <span>Devuelto: +{formatearMoneda(mov.monto_adicional || 0)}</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-                                      <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
-                                    </>
-                                  )}
-                                  <span className="font-bold opacity-80">({nombreSocio})</span>
-                                </div>
-                              )
-                            })()}
-                            {(mov.monto_sobrante || 0) > 0 && (
-                              <div className="text-[10px] text-emerald-600 font-medium">
-                                Sobró: −{formatearMoneda(mov.monto_sobrante || 0)} ({mov.destino_sobrante})
+                      <div className="text-right">
+                        <span
+                          className={`text-sm sm:text-base font-black font-mono block ${
+                            esAnulado
+                              ? 'line-through text-slate-400'
+                              : esGanar
+                              ? 'text-emerald-700'
+                              : 'text-slate-900'
+                          }`}
+                        >
+                          {esGanar
+                            ? `+${formatearMoneda(mov.monto_ganado || 0)}`
+                            : formatearMoneda(mov.total_gastado || 0)}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          {esGanar
+                            ? mov.reparto
+                              ? `${mov.reparto.length} participantes`
+                              : 'Sin reparto'
+                            : `Caja: ${formatearMoneda(mov.monto_asignado || 0)}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-800 font-medium line-clamp-2">
+                      {mov.descripcion || 'Sin descripción'}
+                    </p>
+
+                    {mov.proveedor && (
+                      <p className="text-[11px] text-indigo-700 font-semibold truncate">
+                        Prov: {mov.proveedor}
+                      </p>
+                    )}
+
+                    {(mov.monto_adicional || 0) > 0 && (
+                      <div
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${
+                          estaDevuelto
+                            ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                            : 'bg-amber-100 text-amber-900 border-amber-300'
+                        }`}
+                      >
+                        {estaDevuelto ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                            <span>Devuelto: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                          </>
+                        )}
+                        <span className="opacity-80">({nombreSocio})</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                      <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                        Por: <strong className="text-slate-600">{regPor}</strong>
+                      </span>
+
+                      <div
+                        className="flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onVerDetalle(mov)}
+                          className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Ver
+                        </button>
+                        {mov.estado === 'REGISTRADO' && (
+                          <button
+                            type="button"
+                            onClick={() => onEditar(mov)}
+                            className="p-1 text-slate-500 hover:text-indigo-600 rounded-lg cursor-pointer"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {mov.estado === 'REGISTRADO' && (
+                          <button
+                            type="button"
+                            onClick={() => onAnular(mov)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                            title="Anular"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* VISTA ESCRITORIO: Tabla Completa */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Código / Fecha</th>
+                    <th className="py-3 px-4">Tipo</th>
+                    <th className="py-3 px-4">Descripción / Proveedor</th>
+                    <th className="py-3 px-4">Registrado Por</th>
+                    <th className="py-3 px-4 text-right">Monto Total</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {movimientosFiltrados.map((mov) => {
+                    const regPor = participantesMap.get(mov.registrado_por)?.nombre || mov.registrado_por
+                    const esAnulado = mov.estado === 'ANULADO'
+                    const esGanar = mov.tipo === 'GANAR'
+
+                    return (
+                      <tr
+                        key={mov.id}
+                        className={`hover:bg-slate-50/70 transition-colors ${
+                          esAnulado ? 'opacity-60 bg-slate-50/40' : ''
+                        }`}
+                      >
+                        <td className="py-3.5 px-4">
+                          <div className="font-mono font-bold text-slate-900">{mov.codigo}</div>
+                          <div className="text-[11px] text-slate-500">{mov.fecha}</div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {esGanar ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <ArrowUpRight className="w-3 h-3 text-emerald-600" />
+                              Ganar
+                              {mov.origen_ganancia === 'SOBRANTE_COMPRA' && (
+                                <span className="ml-1 text-[9px] bg-emerald-200 text-emerald-800 px-1 rounded">
+                                  Sobrante
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <ArrowDownRight className="w-3 h-3 text-amber-600" />
+                              Comprar
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 max-w-xs">
+                          <p className="font-medium text-slate-800 truncate" title={mov.descripcion}>
+                            {mov.descripcion || 'Sin descripción'}
+                          </p>
+                          {mov.proveedor && (
+                            <p className="text-[11px] text-indigo-600 truncate">
+                              Prov: {mov.proveedor}
+                            </p>
+                          )}
+                          {esAnulado && mov.motivo_anulacion && (
+                            <p className="text-[11px] text-rose-600 italic">
+                              Motivo anulación: {mov.motivo_anulacion}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 font-medium">{regPor}</td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          {esGanar ? (
+                            <div>
+                              <span className="font-black text-sm text-emerald-700">
+                                +{formatearMoneda(mov.monto_ganado || 0)}
+                              </span>
+                              <div className="text-[10px] text-slate-400">
+                                {mov.reparto ? `${mov.reparto.length} participantes` : 'Sin reparto'}
                               </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="font-black text-sm text-slate-900">
+                                {formatearMoneda(mov.total_gastado || 0)}
+                              </span>
+                              <div className="text-[10px] text-slate-500">
+                                Asignado caja: {formatearMoneda(mov.monto_asignado || 0)}
+                              </div>
+                              {(mov.monto_adicional || 0) > 0 && (() => {
+                                const estaDevuelto = Boolean(
+                                  mov.aporte_devuelto ||
+                                  (mov.aportes_adicionales && mov.aportes_adicionales.some((a) => a.estado === 'DEVUELTO'))
+                                )
+                                const nombreSocio = mov.quien_aporto_adicional
+                                  ? participantesMap.get(mov.quien_aporto_adicional)?.nombre || mov.quien_aporto_adicional
+                                  : 'Socio'
+
+                                return (
+                                  <div
+                                    className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border shadow-2xs ${
+                                      estaDevuelto
+                                        ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                        : 'bg-amber-100 text-amber-900 border-amber-300'
+                                    }`}
+                                  >
+                                    {estaDevuelto ? (
+                                      <>
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                        <span>Devuelto: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                        <span>Faltó: +{formatearMoneda(mov.monto_adicional || 0)}</span>
+                                      </>
+                                    )}
+                                    <span className="font-bold opacity-80">({nombreSocio})</span>
+                                  </div>
+                                )
+                              })()}
+                              {(mov.monto_sobrante || 0) > 0 && (
+                                <div className="text-[10px] text-emerald-600 font-medium">
+                                  Sobró: −{formatearMoneda(mov.monto_sobrante || 0)} ({mov.destino_sobrante})
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {mov.estado === 'REGISTRADO' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                              Registrado
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
+                              Anulado
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => onVerDetalle(mov)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="Ver desglose completo"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {mov.estado === 'REGISTRADO' && (
+                              <button
+                                onClick={() => onEditar(mov)}
+                                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                title="Editar este movimiento"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+
+                            {mov.estado === 'REGISTRADO' && (
+                              <button
+                                onClick={() => onAnular(mov)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Anular movimiento con motivo de auditoría"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </button>
                             )}
                           </div>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {mov.estado === 'REGISTRADO' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                            Registrado
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">
-                            Anulado
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => onVerDetalle(mov)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                            title="Ver desglose completo"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-
-                          {mov.estado === 'REGISTRADO' && (
-                            <button
-                              onClick={() => onEditar(mov)}
-                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                              title="Editar este movimiento"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {mov.estado === 'REGISTRADO' && (
-                            <button
-                              onClick={() => onAnular(mov)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                              title="Anular movimiento con motivo de auditoría"
-                            >
-                              <Ban className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

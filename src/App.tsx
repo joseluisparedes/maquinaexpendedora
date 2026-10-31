@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Navbar } from './components/Navbar'
+import { MobileBottomNav } from './components/MobileBottomNav'
 import { PantallaInicioMovil } from './components/PantallaInicioMovil'
 import { DashboardView } from './components/DashboardView'
 import { MovimientosView } from './components/MovimientosView'
@@ -817,7 +818,7 @@ export function App() {
             onCerrarSesion={handleCerrarSesion}
           />
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 pb-24 md:pb-6">
             {/* Dashboard: solo si tiene permiso */}
             {vistaActual === 'dashboard' && permisos.puede_ver_dashboard && (
               <DashboardView
@@ -911,11 +912,21 @@ export function App() {
             )}
           </main>
 
-          <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
+          <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden mb-16 md:mb-0">
             <p>
               Máquina Expendedora • Conectado como {usuarioActual.nombre} ({usuarioActual.rol})
             </p>
           </footer>
+
+          {/* Navegación Móvil Inferior Fija */}
+          <MobileBottomNav
+            vistaActual={vistaActual}
+            setVistaActual={setVistaActual}
+            permisos={permisos}
+            cicloActivo={cicloActivo}
+            onNuevoMovimiento={handleNuevoMovimientoSegunCiclo}
+            onVolverInicio={() => setModoAdmin(false)}
+          />
         </div>
       )}
 

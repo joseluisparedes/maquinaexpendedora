@@ -46,10 +46,13 @@ export const GaleriaFotosModal: React.FC<GaleriaFotosModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden border-t sm:border border-slate-200 animate-in slide-in-from-bottom duration-200 sm:animate-in sm:zoom-in-95 max-h-[92dvh] sm:max-h-[90vh] flex flex-col pb-safe">
+        {/* Handle visual móvil */}
+        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mt-2 mb-1 sm:hidden shrink-0" />
+
         {/* Cabecera */}
-        <div className="px-5 py-4 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 text-white flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 sm:py-4 bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shadow-xs">
               <Camera className="w-6 h-6 text-white" />

@@ -325,7 +325,7 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
       )}
 
       {/* ESTADO DE CONEXIÓN CON SUPABASE (PROY_TAREASJLPH) */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl ${conectadoSupabase ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -398,7 +398,7 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* CONFIG 1: REPARTO DE GANANCIAS */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-slate-900">
@@ -497,7 +497,7 @@ CREATE POLICY "Permitir todo a vending_movimientos" ON public.vending_movimiento
         </div>
 
         {/* CONFIG 2: REPARTO DE SOBRANTES (SOLO SOCIOS) */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-slate-900">
