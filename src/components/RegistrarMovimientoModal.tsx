@@ -273,6 +273,9 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     setTotalBoletaGasto(nuevoTotal)
 
     if (nuevoTotal === '' || isNaN(nuevoTotal as number) || (nuevoTotal as number) < 0) {
+      setResultadoCompra('EXACTO')
+      setMontoAdicional('')
+      setMontoSobrante('')
       return
     }
 
@@ -320,6 +323,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
         setMontoSobrante('')
         setMontoAdicional('')
       }
+    } else {
+      setResultadoCompra('EXACTO')
+      setMontoAdicional('')
+      setMontoSobrante('')
     }
   }
   const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
