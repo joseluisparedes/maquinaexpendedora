@@ -70,6 +70,11 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
       const userDefecto = usuarioActual?.id || participantes[0]?.id || ''
       setRegistradoPor(userDefecto)
       setQuienAportoAdicional(userDefecto)
+      setMontoAsignado('')
+      setTotalBoletaGasto('')
+      setMontoSobrante('')
+      setMontoAdicional('')
+      setResultadoCompra('EXACTO')
       setProveedoresSeleccionados([])
       setTextoProveedor('')
       setComprobantes([])
@@ -107,6 +112,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
 
   // Estado para COMPRAR
   const [montoAsignado, setMontoAsignado] = useState<number | ''>('')
+  const [totalBoletaGasto, setTotalBoletaGasto] = useState<number | ''>('')
   const [resultadoCompra, setResultadoCompra] = useState<ResultadoCompra>('EXACTO')
   const [montoAdicional, setMontoAdicional] = useState<number | ''>('')
   const [quienAportoAdicional, setQuienAportoAdicional] = useState<string>(
@@ -262,7 +268,60 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
     return calcularReparto(montoGanado, configGanancia.detalles)
   }, [tipo, montoGanado, configGanancia])
 
-  // Valores normalizados para Comprar según el escenario seleccionado
+  // Manejador del cambio en "Total gastado" que calcula la resta automáticamente
+  const handleTotalGastoChange = (nuevoTotal: number | '') => {
+    setTotalBoletaGasto(nuevoTotal)
+
+    if (nuevoTotal === '' || isNaN(nuevoTotal as number) || (nuevoTotal as number) < 0) {
+      return
+    }
+
+    const gasto = Number(nuevoTotal)
+    const caja = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
+    const diferencia = Number((gasto - caja).toFixed(2))
+
+    if (diferencia > 0) {
+      // Faltó dinero: se cubrió con dinero extra
+      setResultadoCompra('ADICIONAL')
+      setMontoAdicional(diferencia)
+      setMontoSobrante('')
+    } else if (diferencia < 0) {
+      // Sobró dinero: vuelto en efectivo
+      setResultadoCompra('SOBRANTE')
+      setMontoSobrante(Math.abs(diferencia))
+      setMontoAdicional('')
+    } else {
+      // Exacto
+      setResultadoCompra('EXACTO')
+      setMontoSobrante('')
+      setMontoAdicional('')
+    }
+  }
+
+  // Si cambia lo que sacó de caja y ya había escrito el total gastado, recalcular
+  const handleMontoAsignadoChange = (nuevoCaja: number | '') => {
+    setMontoAsignado(nuevoCaja)
+
+    if (totalBoletaGasto !== '' && typeof totalBoletaGasto === 'number') {
+      const gasto = totalBoletaGasto
+      const caja = nuevoCaja === '' ? 0 : Math.max(0, Number(nuevoCaja))
+      const diferencia = Number((gasto - caja).toFixed(2))
+
+      if (diferencia > 0) {
+        setResultadoCompra('ADICIONAL')
+        setMontoAdicional(diferencia)
+        setMontoSobrante('')
+      } else if (diferencia < 0) {
+        setResultadoCompra('SOBRANTE')
+        setMontoSobrante(Math.abs(diferencia))
+        setMontoAdicional('')
+      } else {
+        setResultadoCompra('EXACTO')
+        setMontoSobrante('')
+        setMontoAdicional('')
+      }
+    }
+  }
   const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
   const valorAdicional =
     resultadoCompra === 'ADICIONAL' && typeof montoAdicional === 'number'
@@ -661,7 +720,9 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                       placeholder="0.00"
                       value={montoAsignado}
                       onChange={(e) =>
-                        setMontoAsignado(e.target.value ? parseFloat(e.target.value) : '')
+                        handleMontoAsignadoChange(
+                          e.target.value ? parseFloat(e.target.value) : ''
+                        )
                       }
                       className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     />
@@ -676,7 +737,7 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                       <button
                         key={m}
                         type="button"
-                        onClick={() => setMontoAsignado(m)}
+                        onClick={() => handleMontoAsignadoChange(m)}
                         className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-600 hover:text-amber-800 transition-colors shrink-0 cursor-pointer"
                       >
                         S/ {m}
@@ -685,102 +746,146 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                   </div>
                 </div>
 
-                {/* PASO 2: ¿Cómo resultó la compra? (3 Estados Claros) */}
-                <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 space-y-3 shadow-2xs">
-                  <div>
-                    <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
-                        2
+                {/* PASO 2: Total Gastado en la Compra (Cálculo Automático) */}
+                <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-amber-500 transition-colors shadow-2xs space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                          2
+                        </span>
+                        ¿Cuánto fue el total gastado en la compra? *
+                      </label>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Ingresa el monto de la boleta o total pagado. El sistema calculará la resta contra la caja de forma automática.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+                      S/
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={totalBoletaGasto}
+                      onChange={(e) =>
+                        handleTotalGastoChange(
+                          e.target.value ? parseFloat(e.target.value) : ''
+                        )
+                      }
+                      className="w-full pl-11 pr-4 py-3 bg-amber-50/40 border border-amber-300 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Estado detectado automáticamente */}
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1.5">
+                      <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                        Resultado del cálculo automático:
                       </span>
-                      ¿Cómo resultó la compra con ese dinero? *
-                    </label>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Selecciona una de las 3 opciones según lo que ocurrió en la tienda:
-                    </p>
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        (También puedes cambiarlo manualmente)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {/* Exacto */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResultadoCompra('EXACTO')
+                          setMontoSobrante('')
+                          setMontoAdicional('')
+                          if (totalBoletaGasto !== '') {
+                            setTotalBoletaGasto(valorAsignado)
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                          resultadoCompra === 'EXACTO'
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-extrabold text-xs">🎯 Costó Exacto</span>
+                          {resultadoCompra === 'EXACTO' && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          Gasto = Caja. Sin vueltos ni deudas.
+                        </p>
+                      </button>
+
+                      {/* Sobró dinero */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResultadoCompra('SOBRANTE')
+                          setMontoAdicional('')
+                        }}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                          resultadoCompra === 'SOBRANTE'
+                            ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20 text-amber-950 shadow-xs'
+                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-extrabold text-xs">💵 Sobró Vuelto</span>
+                          {resultadoCompra === 'SOBRANTE' && (
+                            <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          Costó menos. Hay vuelto en efectivo.
+                        </p>
+                      </button>
+
+                      {/* Faltó dinero */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResultadoCompra('ADICIONAL')
+                          setMontoSobrante('')
+                        }}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                          resultadoCompra === 'ADICIONAL'
+                            ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-xs'
+                            : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-extrabold text-xs">💳 Faltó Dinero</span>
+                          {resultadoCompra === 'ADICIONAL' && (
+                            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          Costó más. Alguien puso de su bolsillo.
+                        </p>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Opción 1: Exacto */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResultadoCompra('EXACTO')
-                        setMontoSobrante('')
-                        setMontoAdicional('')
-                      }}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                        resultadoCompra === 'EXACTO'
-                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
-                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-extrabold text-xs">🎯 Costó Exacto</span>
-                        {resultadoCompra === 'EXACTO' && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Se gastó todo lo que se llevó. Ni sobró ni faltó.
-                      </p>
-                    </button>
-
-                    {/* Opción 2: Sobró vuelto */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResultadoCompra('SOBRANTE')
-                        setMontoAdicional('')
-                      }}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                        resultadoCompra === 'SOBRANTE'
-                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20 text-amber-950 shadow-xs'
-                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-extrabold text-xs">💵 Sobró Dinero</span>
-                        {resultadoCompra === 'SOBRANTE' && (
-                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Costó menos y trajiste vuelto en efectivo.
-                      </p>
-                    </button>
-
-                    {/* Opción 3: Faltó y alguien completó */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResultadoCompra('ADICIONAL')
-                        setMontoSobrante('')
-                      }}
-                      className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
-                        resultadoCompra === 'ADICIONAL'
-                          ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-xs'
-                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-extrabold text-xs">💳 Faltó Dinero</span>
-                        {resultadoCompra === 'ADICIONAL' && (
-                          <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Costó más y alguien puso de su billetera.
-                      </p>
-                    </button>
-                  </div>
-
-                  {/* CONTENIDO SI SOBRÓ DINERO */}
+                  {/* Detalle si SOBRÓ DINERO */}
                   {resultadoCompra === 'SOBRANTE' && (
                     <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3 animate-in fade-in duration-200">
                       <div>
-                        <label className="block text-xs font-bold text-amber-900 uppercase mb-1">
-                          ¿Cuánto dinero sobró de vuelto? (S/) *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-amber-900 uppercase">
+                            ¿Cuánto dinero sobró de vuelto? (S/) *
+                          </label>
+                          {totalBoletaGasto !== '' && (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                              Calculado: S/ {valorAsignado.toFixed(2)} - S/ {Number(totalBoletaGasto).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
                             S/
@@ -794,9 +899,13 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                             required
                             placeholder="0.00"
                             value={montoSobrante}
-                            onChange={(e) =>
-                              setMontoSobrante(e.target.value ? parseFloat(e.target.value) : '')
-                            }
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : ''
+                              setMontoSobrante(val)
+                              if (val !== '' && typeof val === 'number') {
+                                setTotalBoletaGasto(Number((valorAsignado - val).toFixed(2)))
+                              }
+                            }}
                             className="w-full pl-9 pr-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                           />
                         </div>
@@ -853,14 +962,21 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                     </div>
                   )}
 
-                  {/* CONTENIDO SI FALTÓ PLATA Y ALGUIEN COMPLETÓ */}
+                  {/* Detalle si FALTÓ DINERO */}
                   {resultadoCompra === 'ADICIONAL' && (
                     <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-3 animate-in fade-in duration-200">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-indigo-950 uppercase mb-1">
-                            ¿Cuánto dinero extra puso? (S/) *
-                          </label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-bold text-indigo-950 uppercase">
+                              Monto que faltó (S/) *
+                            </label>
+                            {totalBoletaGasto !== '' && (
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full border border-indigo-300">
+                                Calculado: S/ {Number(totalBoletaGasto).toFixed(2)} - S/ {valorAsignado.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
                               S/
@@ -873,11 +989,13 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                               required
                               placeholder="0.00"
                               value={montoAdicional}
-                              onChange={(e) =>
-                                setMontoAdicional(
-                                  e.target.value ? parseFloat(e.target.value) : ''
-                                )
-                              }
+                              onChange={(e) => {
+                                const val = e.target.value ? parseFloat(e.target.value) : ''
+                                setMontoAdicional(val)
+                                if (val !== '' && typeof val === 'number') {
+                                  setTotalBoletaGasto(Number((valorAsignado + val).toFixed(2)))
+                                }
+                              }}
                               className="w-full pl-9 pr-3 py-2 bg-white border border-indigo-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                             />
                           </div>
