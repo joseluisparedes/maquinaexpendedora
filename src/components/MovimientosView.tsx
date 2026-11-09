@@ -13,6 +13,7 @@ import {
   Edit2,
   AlertTriangle,
   CheckCircle2,
+  ArrowUpDown,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -40,6 +41,7 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'GANAR' | 'COMPRAR'>('TODOS')
   const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'REGISTRADO' | 'ANULADO'>('REGISTRADO')
   const [filtroParticipante, setFiltroParticipante] = useState<string>('TODOS')
+  const [ordenFecha, setOrdenFecha] = useState<'desc' | 'asc'>('desc')
 
   const participantesMap = useMemo(() => {
     const map = new Map<string, Participante>()
@@ -67,8 +69,14 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
         m.quien_aporto_adicional === filtroParticipante
 
       return matchBusqueda && matchTipo && matchEstado && matchParticipante
+    }).sort((a, b) => {
+      const cmp = a.fecha.localeCompare(b.fecha)
+      if (cmp !== 0) return ordenFecha === 'desc' ? -cmp : cmp
+      return ordenFecha === 'desc'
+        ? b.creado_el.localeCompare(a.creado_el)
+        : a.creado_el.localeCompare(b.creado_el)
     })
-  }, [movimientos, busqueda, filtroTipo, filtroEstado, filtroParticipante])
+  }, [movimientos, busqueda, filtroTipo, filtroEstado, filtroParticipante, ordenFecha])
 
   // Exportar a CSV (Excel compatible)
   const exportarCSV = () => {
@@ -218,7 +226,7 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
           <select
             value={filtroParticipante}
             onChange={(e) => setFiltroParticipante(e.target.value)}
-            className="bg-slate-100 border-none rounded-lg px-2.5 py-1 text-slate-700 font-medium text-xs focus:ring-1 focus:ring-indigo-500"
+            className="bg-slate-100 border-none rounded-lg px-2.5 py-1 text-slate-700 font-medium text-xs focus:ring-1 focus:ring-indigo-500 cursor-pointer"
           >
             <option value="TODOS">Todos los participantes</option>
             {participantes.map((p) => (
@@ -227,6 +235,16 @@ export const MovimientosView: React.FC<MovimientosViewProps> = ({
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            onClick={() => setOrdenFecha(ordenFecha === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors cursor-pointer ml-auto"
+            title="Alternar orden por fecha de movimientos"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+            <span>{ordenFecha === 'desc' ? 'Fecha: Más recientes' : 'Fecha: Más antiguos'}</span>
+          </button>
         </div>
       </div>
 

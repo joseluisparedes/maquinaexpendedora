@@ -10,6 +10,7 @@ import {
   Plus,
   Edit3,
   Trash2,
+  ArrowUpDown,
 } from 'lucide-react'
 import type { CicloMaquina, Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
@@ -44,18 +45,27 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
         usuarioActual.rol_id === 'admin')
   )
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'ABASTECIMIENTO' | 'GANANCIA' | 'activos' | 'cerrados'>('todos')
+  const [ordenFecha, setOrdenFecha] = useState<'desc' | 'asc'>('desc')
   const cicloActivo = useMemo(() => ciclos.find((c) => c.estado !== 'CERRADO') || null, [ciclos])
 
   // Filtrado de ciclos
   const ciclosFiltrados = useMemo(() => {
-    return ciclos.filter((c) => {
-      if (filtroTipo === 'ABASTECIMIENTO') return c.tipo === 'ABASTECIMIENTO'
-      if (filtroTipo === 'GANANCIA') return c.tipo === 'GANANCIA'
-      if (filtroTipo === 'activos') return c.estado !== 'CERRADO'
-      if (filtroTipo === 'cerrados') return c.estado === 'CERRADO'
-      return true
-    })
-  }, [ciclos, filtroTipo])
+    return ciclos
+      .filter((c) => {
+        if (filtroTipo === 'ABASTECIMIENTO') return c.tipo === 'ABASTECIMIENTO'
+        if (filtroTipo === 'GANANCIA') return c.tipo === 'GANANCIA'
+        if (filtroTipo === 'activos') return c.estado !== 'CERRADO'
+        if (filtroTipo === 'cerrados') return c.estado === 'CERRADO'
+        return true
+      })
+      .sort((a, b) => {
+        const fechaA = a.fecha_inicio || a.creado_el
+        const fechaB = b.fecha_inicio || b.creado_el
+        return ordenFecha === 'desc'
+          ? fechaB.localeCompare(fechaA)
+          : fechaA.localeCompare(fechaB)
+      })
+  }, [ciclos, filtroTipo, ordenFecha])
 
   // Métricas rápidas
   const totalAbastecimientos = useMemo(
@@ -150,33 +160,45 @@ export const CiclosView: React.FC<CiclosViewProps> = ({
         </div>
       </div>
 
-      {/* Barra de Filtros */}
+      {/* Barra de Filtros y Orden */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs text-xs">
         <div className="flex items-center gap-2 text-slate-600 font-bold">
           <Filter className="w-4 h-4 text-indigo-600" />
           <span>Filtrar por:</span>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'todos', label: 'Todos' },
-            { id: 'activos', label: 'En Proceso' },
-            { id: 'ABASTECIMIENTO', label: 'Abastecimiento' },
-            { id: 'GANANCIA', label: 'Ganancia' },
-            { id: 'cerrados', label: 'Cerrados' },
-          ].map((op) => (
-            <button
-              key={op.id}
-              onClick={() => setFiltroTipo(op.id as any)}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
-                filtroTipo === op.id
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
-              {op.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'activos', label: 'En Proceso' },
+              { id: 'ABASTECIMIENTO', label: 'Abastecimiento' },
+              { id: 'GANANCIA', label: 'Ganancia' },
+              { id: 'cerrados', label: 'Cerrados' },
+            ].map((op) => (
+              <button
+                key={op.id}
+                onClick={() => setFiltroTipo(op.id as any)}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                  filtroTipo === op.id
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                {op.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setOrdenFecha(ordenFecha === 'desc' ? 'asc' : 'desc')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors cursor-pointer sm:ml-2"
+            title="Alternar orden por fecha de ciclos"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
+            <span>{ordenFecha === 'desc' ? 'Fechas: Más recientes' : 'Fechas: Más antiguos'}</span>
+          </button>
         </div>
       </div>
 
