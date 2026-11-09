@@ -306,6 +306,34 @@ export const DetalleMovimientoModal: React.FC<DetalleMovimientoModalProps> = ({
                 </div>
               </div>
 
+              {/* Desglose por Lugares / Tiendas si existe */}
+              {movimiento.desglose_lugares && movimiento.desglose_lugares.length > 0 && (
+                <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-black text-amber-950 uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <Store className="w-3.5 h-3.5 text-amber-700" />
+                      Origen de Gastos por Lugar / Tienda:
+                    </span>
+                    <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                      {movimiento.desglose_lugares.length} tiendas
+                    </span>
+                  </div>
+                  <div className="divide-y divide-amber-200/60 text-xs">
+                    {movimiento.desglose_lugares.map((lugar) => (
+                      <div key={lugar.id} className="py-2 flex items-center justify-between">
+                        <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          {lugar.lugar}
+                        </span>
+                        <span className="font-black text-slate-900">
+                          {formatearMoneda(lugar.monto)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {(movimiento.monto_adicional || 0) > 0 && (
                 <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-2">
                   <div className="flex items-center justify-between text-xs font-black text-amber-900 uppercase tracking-wider">

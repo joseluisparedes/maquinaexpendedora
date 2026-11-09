@@ -22,8 +22,9 @@ import {
   Loader2,
   Settings2,
   RotateCcw,
+  Calculator,
 } from 'lucide-react'
-import type { Movimiento, Participante, ProductoDetalle } from '../types'
+import type { Movimiento, Participante, ProductoDetalle, DesgloseCompraLugar } from '../types'
 import {
   StorageService,
   PROVEEDORES_DEFAULT,
@@ -77,6 +78,8 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
       setResultadoCompra('EXACTO')
       setProveedoresSeleccionados([])
       setTextoProveedor('')
+      setDesgloseLugares([])
+      setMostrarDesgloseLugares(false)
       setComprobantes([])
       setFotoEnPantallaCompleta(null)
       setProveedoresFrecuentes(StorageService.getProveedoresFrecuentes())
@@ -130,6 +133,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
   const [mostrarDetalleProductos, setMostrarDetalleProductos] = useState<boolean>(false)
   const [mostrarGuiaExplicativa, setMostrarGuiaExplicativa] = useState<boolean>(false)
   const [productos, setProductos] = useState<ProductoDetalle[]>([])
+
+  // Desglose de compras por tienda / lugar (Makro, Mercado, etc.)
+  const [mostrarDesgloseLugares, setMostrarDesgloseLugares] = useState<boolean>(false)
+  const [desgloseLugares, setDesgloseLugares] = useState<DesgloseCompraLugar[]>([])
 
   // Estados para Atajos y Sugerencias Configurables
   const [proveedoresFrecuentes, setProveedoresFrecuentes] = useState<string[]>(() =>
@@ -329,6 +336,73 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
       setMontoSobrante('')
     }
   }
+  // Métodos para gestionar el desglose de lugares
+  const agregarLugarDesglose = (nombreSugerido: string = '') => {
+    const nuevo: DesgloseCompraLugar = {
+      id: 'lugar-' + Date.now() + Math.random().toString(36).substring(2, 5),
+      lugar: nombreSugerido,
+      monto: 0,
+    }
+    setDesgloseLugares((prev) => [...prev, nuevo])
+    setMostrarDesgloseLugares(true)
+  }
+
+  const actualizarLugarDesglose = (
+    id: string,
+    campo: keyof DesgloseCompraLugar,
+    valor: string | number
+  ) => {
+    setDesgloseLugares((prev) => {
+      const actualizados = prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, [campo]: valor }
+        }
+        return item
+      })
+
+      if (campo === 'monto') {
+        const suma = Number(
+          actualizados.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+        )
+        if (suma > 0) {
+          handleTotalGastoChange(suma)
+        }
+      }
+
+      const nombres = actualizados.map((a) => a.lugar.trim()).filter(Boolean)
+      if (nombres.length > 0) {
+        setProveedoresSeleccionados(nombres)
+      }
+
+      return actualizados
+    })
+  }
+
+  const eliminarLugarDesglose = (id: string) => {
+    setDesgloseLugares((prev) => {
+      const filtrados = prev.filter((item) => item.id !== id)
+      if (filtrados.length === 0) {
+        setMostrarDesgloseLugares(false)
+      } else {
+        const suma = Number(
+          filtrados.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+        )
+        if (suma > 0) {
+          handleTotalGastoChange(suma)
+        }
+        const nombres = filtrados.map((a) => a.lugar.trim()).filter(Boolean)
+        setProveedoresSeleccionados(nombres)
+      }
+      return filtrados
+    })
+  }
+
+  const sumaLugares = useMemo(() => {
+    return Number(
+      desgloseLugares.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+    )
+  }, [desgloseLugares])
+
   const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
   const valorAdicional =
     resultadoCompra === 'ADICIONAL' && typeof montoAdicional === 'number'
@@ -500,6 +574,10 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
               ]
             : undefined,
         detalle_productos: productos.length > 0 ? productos : undefined,
+        desglose_lugares:
+          desgloseLugares.filter((l) => l.lugar.trim() && l.monto > 0).length > 0
+            ? desgloseLugares.filter((l) => l.lugar.trim() && l.monto > 0)
+            : undefined,
         movimiento_sobrante_repartido_id: idMovSobrante,
         creado_el: new Date().toISOString(),
       }
@@ -767,7 +845,123 @@ export const RegistrarMovimientoModal: React.FC<RegistrarMovimientoModalProps> =
                         Ingresa el monto de la boleta o total pagado. El sistema calculará la resta contra la caja de forma automática.
                       </p>
                     </div>
+
+                    {/* Botón para alternar desglose por lugares / tiendas */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!mostrarDesgloseLugares && desgloseLugares.length === 0) {
+                          setDesgloseLugares([
+                            { id: 'l1', lugar: 'Makro', monto: valorAsignado > 0 ? valorAsignado : 0 },
+                            { id: 'l2', lugar: 'Mercado', monto: valorAdicional > 0 ? valorAdicional : 0 },
+                          ])
+                        }
+                        setMostrarDesgloseLugares(!mostrarDesgloseLugares)
+                      }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-colors cursor-pointer shrink-0 ${
+                        mostrarDesgloseLugares
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <Store className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{mostrarDesgloseLugares ? 'Ocultar Desglose' : '+ Desglosar por Lugar/Tienda'}</span>
+                    </button>
                   </div>
+
+                  {/* Sub-sección Desglose por Lugares / Tiendas (Makro, Mercado, etc.) */}
+                  {mostrarDesgloseLugares && (
+                    <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2.5 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-amber-950 uppercase tracking-wide flex items-center gap-1">
+                          <Calculator className="w-3.5 h-3.5 text-amber-700" />
+                          Desglose de compras por tienda / lugar:
+                        </span>
+                        <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                          Suma: S/ {sumaLugares.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {desgloseLugares.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Lugar (ej: Makro, Mercado)..."
+                              value={item.lugar}
+                              onChange={(e) => actualizarLugarDesglose(item.id, 'lugar', e.target.value)}
+                              className="flex-1 px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-slate-800"
+                            />
+                            <div className="relative w-32 shrink-0">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
+                                S/
+                              </span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={item.monto || ''}
+                                onChange={(e) =>
+                                  actualizarLugarDesglose(
+                                    item.id,
+                                    'monto',
+                                    e.target.value ? parseFloat(e.target.value) : 0
+                                  )
+                                }
+                                className="w-full pl-8 pr-2 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-black text-slate-900"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => eliminarLugarDesglose(item.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-md cursor-pointer"
+                              title="Eliminar lugar"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => agregarLugarDesglose('Makro')}
+                            className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer"
+                          >
+                            + Makro
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => agregarLugarDesglose('Mercado')}
+                            className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer"
+                          >
+                            + Mercado
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => agregarLugarDesglose('')}
+                            className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer flex items-center gap-0.5"
+                          >
+                            <Plus className="w-3 h-3" /> Otro
+                          </button>
+                        </div>
+
+                        {sumaLugares > 0 && sumaLugares !== totalBoletaGasto && (
+                          <button
+                            type="button"
+                            onClick={() => handleTotalGastoChange(sumaLugares)}
+                            className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200 cursor-pointer"
+                          >
+                            Aplicar suma al total (S/ {sumaLugares.toFixed(2)})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">

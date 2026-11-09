@@ -128,6 +128,12 @@ export interface RepartoItem {
   monto: number
 }
 
+export interface DesgloseCompraLugar {
+  id: string
+  lugar: string // Ej: 'Makro', 'Mercado Central', etc.
+  monto: number // Monto gastado en dicho lugar
+}
+
 export interface Movimiento {
   id: string
   codigo: string // Ej: MOV-001
@@ -167,6 +173,7 @@ export interface Movimiento {
   comprobantes_devolucion?: string[]
   observaciones_devolucion?: string
   detalle_productos?: ProductoDetalle[]
+  desglose_lugares?: DesgloseCompraLugar[] // Desglose opcional de compras por lugar/tienda (ej: Makro S/200, Mercado S/228)
   movimiento_sobrante_repartido_id?: string // Id del movimiento GANAR que se generó si destino_sobrante === 'REPARTO'
 
   creado_el: string

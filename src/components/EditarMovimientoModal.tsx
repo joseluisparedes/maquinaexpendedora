@@ -12,8 +12,11 @@ import {
   Store,
   Receipt,
   FileText,
+  Plus,
+  Trash2,
+  Calculator,
 } from 'lucide-react'
-import type { Movimiento, Participante } from '../types'
+import type { Movimiento, Participante, DesgloseCompraLugar } from '../types'
 import { formatearMoneda } from '../utils/calculations'
 import { comprimirImagen } from '../utils/imageHelper'
 
@@ -55,6 +58,10 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
   const [comprobantes, setComprobantes] = useState<string[]>([])
   const [cargandoFoto, setCargandoFoto] = useState(false)
 
+  // Desglose de compras por tienda / lugar (Makro, Mercado, etc.)
+  const [mostrarDesgloseLugares, setMostrarDesgloseLugares] = useState(false)
+  const [desgloseLugares, setDesgloseLugares] = useState<DesgloseCompraLugar[]>([])
+
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
@@ -95,6 +102,24 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
           setMontoSobrante('')
         }
 
+        // Cargar desglose de lugares si existía o inicializarlo si hay proveedores
+        if (movimiento.desglose_lugares && movimiento.desglose_lugares.length > 0) {
+          setDesgloseLugares(movimiento.desglose_lugares)
+          setMostrarDesgloseLugares(true)
+        } else if (movimiento.proveedores && movimiento.proveedores.length > 1) {
+          setDesgloseLugares(
+            movimiento.proveedores.map((p, idx) => ({
+              id: 'lugar-' + idx,
+              lugar: p,
+              monto: 0,
+            }))
+          )
+          setMostrarDesgloseLugares(true)
+        } else {
+          setDesgloseLugares([])
+          setMostrarDesgloseLugares(false)
+        }
+
         const fotos =
           movimiento.comprobantes && movimiento.comprobantes.length > 0
             ? [...movimiento.comprobantes]
@@ -106,20 +131,18 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
     }
   }, [movimiento, isOpen, participantes])
 
-  // Manejador del cambio en "Total gastado" (Paso 2)
-  const handleTotalGastoChange = (nuevoTotal: number | '') => {
-    setTotalBoletaGasto(nuevoTotal)
-
-    if (nuevoTotal === '' || isNaN(nuevoTotal as number) || (nuevoTotal as number) < 0) {
+  // Recalcular diferencia automática al cambiar total o caja
+  const recalcularDiferencia = (total: number | '', caja: number | '') => {
+    if (total === '' || isNaN(total as number) || (total as number) < 0) {
       setResultadoCompra('EXACTO')
       setMontoAdicional('')
       setMontoSobrante('')
       return
     }
 
-    const gasto = Number(nuevoTotal)
-    const caja = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
-    const diferencia = Number((gasto - caja).toFixed(2))
+    const gasto = Number(total)
+    const cajaVal = caja === '' ? 0 : Math.max(0, Number(caja))
+    const diferencia = Number((gasto - cajaVal).toFixed(2))
 
     if (diferencia > 0) {
       setResultadoCompra('ADICIONAL')
@@ -136,34 +159,90 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
     }
   }
 
+  // Manejador del cambio en "Total gastado" (Paso 2)
+  const handleTotalGastoChange = (nuevoTotal: number | '') => {
+    setTotalBoletaGasto(nuevoTotal)
+    recalcularDiferencia(nuevoTotal, montoAsignado)
+  }
+
   // Si cambia lo que sacó de caja (Paso 1)
   const handleMontoAsignadoChange = (nuevoCaja: number | '') => {
     setMontoAsignado(nuevoCaja)
-
-    if (totalBoletaGasto !== '' && typeof totalBoletaGasto === 'number') {
-      const gasto = totalBoletaGasto
-      const caja = nuevoCaja === '' ? 0 : Math.max(0, Number(nuevoCaja))
-      const diferencia = Number((gasto - caja).toFixed(2))
-
-      if (diferencia > 0) {
-        setResultadoCompra('ADICIONAL')
-        setMontoAdicional(diferencia)
-        setMontoSobrante('')
-      } else if (diferencia < 0) {
-        setResultadoCompra('SOBRANTE')
-        setMontoSobrante(Math.abs(diferencia))
-        setMontoAdicional('')
-      } else {
-        setResultadoCompra('EXACTO')
-        setMontoSobrante('')
-        setMontoAdicional('')
-      }
-    } else {
-      setResultadoCompra('EXACTO')
-      setMontoAdicional('')
-      setMontoSobrante('')
-    }
+    recalcularDiferencia(totalBoletaGasto, nuevoCaja)
   }
+
+  // Métodos para gestionar el desglose de lugares
+  const agregarLugarDesglose = (nombreSugerido: string = '') => {
+    const nuevo: DesgloseCompraLugar = {
+      id: 'lugar-' + Date.now() + Math.random().toString(36).substring(2, 5),
+      lugar: nombreSugerido,
+      monto: 0,
+    }
+    setDesgloseLugares((prev) => [...prev, nuevo])
+    setMostrarDesgloseLugares(true)
+  }
+
+  const actualizarLugarDesglose = (
+    id: string,
+    campo: keyof DesgloseCompraLugar,
+    valor: string | number
+  ) => {
+    setDesgloseLugares((prev) => {
+      const actualizados = prev.map((item) => {
+        if (item.id === id) {
+          return { ...item, [campo]: valor }
+        }
+        return item
+      })
+
+      // Si se actualizó el monto de una tienda, recalculamos el total de la compra automáticamente
+      if (campo === 'monto') {
+        const suma = Number(
+          actualizados.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+        )
+        if (suma > 0) {
+          setTotalBoletaGasto(suma)
+          recalcularDiferencia(suma, montoAsignado)
+        }
+      }
+
+      // Actualizar el campo texto de proveedor consolidando los lugares
+      const nombres = actualizados
+        .map((a) => a.lugar.trim())
+        .filter(Boolean)
+      if (nombres.length > 0) {
+        setProveedor(nombres.join(', '))
+      }
+
+      return actualizados
+    })
+  }
+
+  const eliminarLugarDesglose = (id: string) => {
+    setDesgloseLugares((prev) => {
+      const filtrados = prev.filter((item) => item.id !== id)
+      if (filtrados.length === 0) {
+        setMostrarDesgloseLugares(false)
+      } else {
+        const suma = Number(
+          filtrados.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+        )
+        if (suma > 0) {
+          setTotalBoletaGasto(suma)
+          recalcularDiferencia(suma, montoAsignado)
+        }
+        const nombres = filtrados.map((a) => a.lugar.trim()).filter(Boolean)
+        setProveedor(nombres.join(', '))
+      }
+      return filtrados
+    })
+  }
+
+  const sumaLugares = useMemo(() => {
+    return Number(
+      desgloseLugares.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0).toFixed(2)
+    )
+  }, [desgloseLugares])
 
   const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
   const valorAdicional =
@@ -258,12 +337,26 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
         return
       }
 
+      // Preparar proveedores consolidados
+      const lugaresFiltrados = desgloseLugares.filter((l) => l.lugar.trim() && l.monto > 0)
+      let proveedorFinal = proveedor.trim()
+      let proveedoresArray: string[] = []
+
+      if (lugaresFiltrados.length > 0) {
+        proveedoresArray = lugaresFiltrados.map((l) => l.lugar.trim())
+        proveedorFinal = proveedoresArray.join(', ')
+      } else if (proveedorFinal) {
+        proveedoresArray = proveedorFinal.split(',').map((p) => p.trim()).filter(Boolean)
+      }
+
       const actualizado: Movimiento = {
         ...movimiento,
         fecha,
         descripcion: descripcion.trim() || 'Compra de mercadería',
         registrado_por: registradoPor,
-        proveedor: proveedor.trim(),
+        proveedor: proveedorFinal || undefined,
+        proveedores: proveedoresArray.length > 0 ? proveedoresArray : undefined,
+        desglose_lugares: lugaresFiltrados.length > 0 ? lugaresFiltrados : undefined,
         monto_asignado: valorAsignado,
         monto_adicional: resultadoCompra === 'ADICIONAL' ? valorAdicional : 0,
         quien_aporto_adicional:
@@ -477,10 +570,126 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
                       ¿Cuánto fue el total gastado en la compra? *
                     </label>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Ingresa el monto real de la boleta. El sistema calculará la resta contra la caja de forma automática.
+                      Ingresa el monto total de la boleta o desglose por lugares (ej: Makro y Mercado).
                     </p>
                   </div>
+
+                  {/* Botón para alternar desglose por lugares / tiendas */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!mostrarDesgloseLugares && desgloseLugares.length === 0) {
+                        setDesgloseLugares([
+                          { id: 'l1', lugar: 'Makro', monto: valorAsignado > 0 ? valorAsignado : 0 },
+                          { id: 'l2', lugar: 'Mercado', monto: valorAdicional > 0 ? valorAdicional : 0 },
+                        ])
+                      }
+                      setMostrarDesgloseLugares(!mostrarDesgloseLugares)
+                    }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-colors cursor-pointer shrink-0 ${
+                      mostrarDesgloseLugares
+                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <Store className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{mostrarDesgloseLugares ? 'Ocultar Desglose' : '+ Desglosar por Lugar/Tienda'}</span>
+                  </button>
                 </div>
+
+                {/* Sub-sección Desglose por Lugares / Tiendas (Makro, Mercado, etc.) */}
+                {mostrarDesgloseLugares && (
+                  <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2.5 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-amber-950 uppercase tracking-wide flex items-center gap-1">
+                        <Calculator className="w-3.5 h-3.5 text-amber-700" />
+                        Desglose de compras por tienda / lugar:
+                      </span>
+                      <span className="text-[10px] text-amber-800 font-bold bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                        Suma: S/ {sumaLugares.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {desgloseLugares.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Lugar (ej: Makro, Mercado)..."
+                            value={item.lugar}
+                            onChange={(e) => actualizarLugarDesglose(item.id, 'lugar', e.target.value)}
+                            className="flex-1 px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-bold text-slate-800"
+                          />
+                          <div className="relative w-32 shrink-0">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">
+                              S/
+                            </span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step="0.01"
+                              min="0"
+                              placeholder="0.00"
+                              value={item.monto || ''}
+                              onChange={(e) =>
+                                actualizarLugarDesglose(
+                                  item.id,
+                                  'monto',
+                                  e.target.value ? parseFloat(e.target.value) : 0
+                                )
+                              }
+                              className="w-full pl-8 pr-2 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-black text-slate-900"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => eliminarLugarDesglose(item.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-md cursor-pointer"
+                            title="Eliminar lugar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => agregarLugarDesglose('Makro')}
+                          className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer"
+                        >
+                          + Makro
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => agregarLugarDesglose('Mercado')}
+                          className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer"
+                        >
+                          + Mercado
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => agregarLugarDesglose('')}
+                          className="px-2 py-0.5 bg-white hover:bg-amber-100 text-[10px] font-bold text-amber-900 border border-amber-200 rounded-md cursor-pointer flex items-center gap-0.5"
+                        >
+                          <Plus className="w-3 h-3" /> Otro
+                        </button>
+                      </div>
+
+                      {sumaLugares > 0 && sumaLugares !== totalBoletaGasto && (
+                        <button
+                          type="button"
+                          onClick={() => handleTotalGastoChange(sumaLugares)}
+                          className="text-[10px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200 cursor-pointer"
+                        >
+                          Aplicar suma al total (S/ {sumaLugares.toFixed(2)})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
@@ -822,11 +1031,16 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="Ej: Makro, Vega, Metro..."
+                    placeholder="Ej: Makro, Mercado..."
                     value={proveedor}
                     onChange={(e) => setProveedor(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs focus:ring-1 focus:ring-amber-500 outline-none"
                   />
+                  {desgloseLugares.length > 0 && (
+                    <p className="text-[10px] text-amber-700 mt-1 font-semibold">
+                      ✓ Vinculado con el desglose: {desgloseLugares.map((d) => `${d.lugar} (S/ ${d.monto})`).join(' + ')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Comprobantes / Fotos adjuntas */}
