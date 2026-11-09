@@ -405,6 +405,11 @@ export const StorageService = {
     this.saveMovimientos(movs)
   },
 
+  deleteFotoMaquina(id: string): void {
+    const fotos = this.getFotosMaquina().filter((f) => f.id !== id)
+    this.saveFotosMaquina(fotos)
+  },
+
   deleteFotosPorCiclo(cicloId: string): void {
     if (!cicloId) return
     const fotos = this.getFotosMaquina().filter((f) => f.ciclo_id !== cicloId)

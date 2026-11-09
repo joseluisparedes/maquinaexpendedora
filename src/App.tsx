@@ -666,6 +666,17 @@ export function App() {
     setFotosMaquina([foto, ...fotosMaquina])
   }
 
+  // Eliminar foto de la máquina (Rol Admin)
+  const handleEliminarFotoMaquina = async (foto: FotoMaquina) => {
+    await DataService.deleteFotoMaquina(foto.id)
+    setFotosMaquina((prev) => prev.filter((f) => f.id !== foto.id))
+    mostrarAviso({
+      tipo: 'exito',
+      titulo: 'Foto Eliminada',
+      mensaje: 'La fotografía ha sido eliminada del historial exitosamente.',
+    })
+  }
+
   // Anular un movimiento con motivo obligatorio
   const handleConfirmarAnulacion = async (id: string, motivo: string) => {
     await DataService.anularMovimiento(id, motivo)
@@ -977,7 +988,10 @@ export function App() {
         onClose={() => setModalGaleriaAbierto(false)}
         fotos={fotosMaquina}
         participantes={participantes}
+        usuarioActual={usuarioActual}
+        permisos={permisos}
         onAbrirNuevaFoto={abrirRegistroFotoMaquina}
+        onEliminarFoto={handleEliminarFotoMaquina}
       />
 
       {/* Modal Detalle y Arqueo de Caja */}

@@ -410,6 +410,23 @@ export const DataService = {
     }
   },
 
+  async deleteFotoMaquina(fotoId: string): Promise<void> {
+    StorageService.deleteFotoMaquina(fotoId)
+    if (supabase && isSupabaseConfigured) {
+      try {
+        const { error } = await supabase
+          .from('vending_fotos_maquina')
+          .delete()
+          .eq('id', fotoId)
+        if (error) {
+          console.warn('Error eliminando foto en Supabase:', error)
+        }
+      } catch (err) {
+        console.warn('No se pudo eliminar foto en Supabase', err)
+      }
+    }
+  },
+
   // Métodos para Ciclos de Máquina (Journeys)
   async getCiclos(): Promise<CicloMaquina[]> {
     const locales = StorageService.getCiclos()

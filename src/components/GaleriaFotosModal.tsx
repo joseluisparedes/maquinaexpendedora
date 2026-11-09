@@ -6,15 +6,19 @@ import {
   User,
   Download,
   Eye,
+  Trash2,
 } from 'lucide-react'
-import type { FotoMaquina, Participante } from '../types'
+import type { FotoMaquina, Participante, PermisosRol } from '../types'
 
 interface GaleriaFotosModalProps {
   isOpen: boolean
   onClose: () => void
   fotos: FotoMaquina[]
   participantes: Participante[]
+  usuarioActual?: Participante
+  permisos?: PermisosRol
   onAbrirNuevaFoto?: () => void
+  onEliminarFoto?: (foto: FotoMaquina) => Promise<void> | void
 }
 
 export const GaleriaFotosModal: React.FC<GaleriaFotosModalProps> = ({
@@ -22,10 +26,34 @@ export const GaleriaFotosModal: React.FC<GaleriaFotosModalProps> = ({
   onClose,
   fotos,
   participantes,
+  usuarioActual,
+  permisos,
   onAbrirNuevaFoto,
+  onEliminarFoto,
 }) => {
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ANTES' | 'DESPUES'>('TODOS')
   const [fotoEnGrande, setFotoEnGrande] = useState<FotoMaquina | null>(null)
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null)
+
+  const esAdmin = Boolean(
+    permisos?.puede_gestionar_usuarios ||
+      usuarioActual?.rol === 'Administrador' ||
+      usuarioActual?.rol_id === 'admin'
+  )
+
+  const handleEliminarClick = async (foto: FotoMaquina) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta fotografía del historial?')) {
+      return
+    }
+    if (onEliminarFoto) {
+      setEliminandoId(foto.id)
+      try {
+        await onEliminarFoto(foto)
+      } finally {
+        setEliminandoId(null)
+      }
+    }
+  }
 
   if (!isOpen) return null
 
@@ -184,7 +212,19 @@ export const GaleriaFotosModal: React.FC<GaleriaFotosModalProps> = ({
                       <p className="text-slate-400 text-[11px] italic">Sin observaciones</p>
                     )}
 
-                    <div className="pt-1 flex justify-end">
+                    <div className="pt-1 flex items-center justify-between border-t border-slate-100">
+                      {esAdmin && onEliminarFoto ? (
+                        <button
+                          type="button"
+                          disabled={eliminandoId === foto.id}
+                          onClick={() => handleEliminarClick(foto)}
+                          className="text-[11px] text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 cursor-pointer hover:underline disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{eliminandoId === foto.id ? 'Eliminando...' : 'Eliminar foto'}</span>
+                        </button>
+                      ) : <span />}
+
                       <button
                         onClick={() => handleDescargar(foto)}
                         className="text-[11px] text-cyan-700 hover:text-cyan-800 font-bold flex items-center gap-1 cursor-pointer hover:underline"
