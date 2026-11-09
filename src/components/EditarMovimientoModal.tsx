@@ -1,16 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import {
   X,
   TrendingUp,
   ShoppingBag,
   Calendar,
   Save,
-  AlertTriangle,
   Camera,
   Upload,
+  CheckCircle2,
+  Coins,
+  Store,
+  Receipt,
+  FileText,
 } from 'lucide-react'
 import type { Movimiento, Participante } from '../types'
 import { formatearMoneda } from '../utils/calculations'
+import { comprimirImagen } from '../utils/imageHelper'
 
 interface EditarMovimientoModalProps {
   movimiento: Movimiento | null
@@ -19,6 +24,8 @@ interface EditarMovimientoModalProps {
   participantes: Participante[]
   onGuardarEdicion: (movimientoActualizado: Movimiento) => void
 }
+
+type ResultadoCompra = 'EXACTO' | 'SOBRANTE' | 'ADICIONAL'
 
 export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
   movimiento,
@@ -36,13 +43,15 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
   const [periodoDesde, setPeriodoDesde] = useState('')
   const [periodoHasta, setPeriodoHasta] = useState('')
 
-  // Campos para COMPRAR
-  const [proveedor, setProveedor] = useState('')
+  // Campos para COMPRAR (con la misma lógica intuitiva que RegistrarMovimientoModal)
   const [montoAsignado, setMontoAsignado] = useState<number | ''>('')
+  const [totalBoletaGasto, setTotalBoletaGasto] = useState<number | ''>('')
+  const [resultadoCompra, setResultadoCompra] = useState<ResultadoCompra>('EXACTO')
   const [montoAdicional, setMontoAdicional] = useState<number | ''>('')
-  const [quienAporto, setQuienAporto] = useState('')
+  const [quienAportoAdicional, setQuienAportoAdicional] = useState<string>('')
   const [montoSobrante, setMontoSobrante] = useState<number | ''>('')
-  const [destinoSobrante, setDestinoSobrante] = useState<'CAJA' | 'REPARTO' | 'NINGUNO'>('CAJA')
+  const [destinoSobrante, setDestinoSobrante] = useState<'CAJA' | 'REPARTO'>('CAJA')
+  const [proveedor, setProveedor] = useState('')
   const [comprobantes, setComprobantes] = useState<string[]>([])
   const [cargandoFoto, setCargandoFoto] = useState(false)
 
@@ -61,12 +70,30 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
         setPeriodoDesde(movimiento.periodo_desde || '')
         setPeriodoHasta(movimiento.periodo_hasta || '')
       } else {
+        const asignado = movimiento.monto_asignado ?? 0
+        const adicional = movimiento.monto_adicional ?? 0
+        const sobrante = movimiento.monto_sobrante ?? 0
+        const total = movimiento.total_gastado ?? Math.max(0, Number((asignado + adicional - sobrante).toFixed(2)))
+
+        setMontoAsignado(asignado)
+        setTotalBoletaGasto(total)
         setProveedor(movimiento.proveedor || '')
-        setMontoAsignado(movimiento.monto_asignado ?? 0)
-        setMontoAdicional(movimiento.monto_adicional ?? 0)
-        setQuienAporto(movimiento.quien_aporto_adicional || '')
-        setMontoSobrante(movimiento.monto_sobrante ?? 0)
-        setDestinoSobrante(movimiento.destino_sobrante || 'CAJA')
+        setQuienAportoAdicional(movimiento.quien_aporto_adicional || participantes[0]?.id || '')
+        setDestinoSobrante(movimiento.destino_sobrante === 'REPARTO' ? 'REPARTO' : 'CAJA')
+
+        if (adicional > 0) {
+          setResultadoCompra('ADICIONAL')
+          setMontoAdicional(adicional)
+          setMontoSobrante('')
+        } else if (sobrante > 0) {
+          setResultadoCompra('SOBRANTE')
+          setMontoSobrante(sobrante)
+          setMontoAdicional('')
+        } else {
+          setResultadoCompra('EXACTO')
+          setMontoAdicional('')
+          setMontoSobrante('')
+        }
 
         const fotos =
           movimiento.comprobantes && movimiento.comprobantes.length > 0
@@ -77,59 +104,114 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
         setComprobantes(fotos)
       }
     }
-  }, [movimiento, isOpen])
+  }, [movimiento, isOpen, participantes])
 
-  if (!isOpen || !movimiento) return null
+  // Manejador del cambio en "Total gastado" (Paso 2)
+  const handleTotalGastoChange = (nuevoTotal: number | '') => {
+    setTotalBoletaGasto(nuevoTotal)
 
-  const esGanar = movimiento.tipo === 'GANAR'
-  const socios = participantes.filter((p) => p.es_socio)
+    if (nuevoTotal === '' || isNaN(nuevoTotal as number) || (nuevoTotal as number) < 0) {
+      setResultadoCompra('EXACTO')
+      setMontoAdicional('')
+      setMontoSobrante('')
+      return
+    }
 
-  // Cálculo de total gastado para COMPRAR
-  const valorAsignado = typeof montoAsignado === 'number' ? montoAsignado : 0
-  const valorAdicional = typeof montoAdicional === 'number' ? montoAdicional : 0
-  const valorSobrante = typeof montoSobrante === 'number' ? montoSobrante : 0
-  const totalGastadoCalculado = Math.max(0, Number((valorAsignado + valorAdicional - valorSobrante).toFixed(2)))
+    const gasto = Number(nuevoTotal)
+    const caja = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
+    const diferencia = Number((gasto - caja).toFixed(2))
 
-  const handleProcesarFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    if (diferencia > 0) {
+      setResultadoCompra('ADICIONAL')
+      setMontoAdicional(diferencia)
+      setMontoSobrante('')
+    } else if (diferencia < 0) {
+      setResultadoCompra('SOBRANTE')
+      setMontoSobrante(Math.abs(diferencia))
+      setMontoAdicional('')
+    } else {
+      setResultadoCompra('EXACTO')
+      setMontoSobrante('')
+      setMontoAdicional('')
+    }
+  }
+
+  // Si cambia lo que sacó de caja (Paso 1)
+  const handleMontoAsignadoChange = (nuevoCaja: number | '') => {
+    setMontoAsignado(nuevoCaja)
+
+    if (totalBoletaGasto !== '' && typeof totalBoletaGasto === 'number') {
+      const gasto = totalBoletaGasto
+      const caja = nuevoCaja === '' ? 0 : Math.max(0, Number(nuevoCaja))
+      const diferencia = Number((gasto - caja).toFixed(2))
+
+      if (diferencia > 0) {
+        setResultadoCompra('ADICIONAL')
+        setMontoAdicional(diferencia)
+        setMontoSobrante('')
+      } else if (diferencia < 0) {
+        setResultadoCompra('SOBRANTE')
+        setMontoSobrante(Math.abs(diferencia))
+        setMontoAdicional('')
+      } else {
+        setResultadoCompra('EXACTO')
+        setMontoSobrante('')
+        setMontoAdicional('')
+      }
+    } else {
+      setResultadoCompra('EXACTO')
+      setMontoAdicional('')
+      setMontoSobrante('')
+    }
+  }
+
+  const valorAsignado = typeof montoAsignado === 'number' ? Math.max(0, montoAsignado) : 0
+  const valorAdicional =
+    resultadoCompra === 'ADICIONAL' && typeof montoAdicional === 'number'
+      ? Math.max(0, montoAdicional)
+      : 0
+  const valorSobrante =
+    resultadoCompra === 'SOBRANTE' && typeof montoSobrante === 'number'
+      ? Math.max(0, montoSobrante)
+      : 0
+
+  const totalGastadoReal = useMemo(() => {
+    return Math.max(0, Number((valorAsignado + valorAdicional - valorSobrante).toFixed(2)))
+  }, [valorAsignado, valorAdicional, valorSobrante])
+
+  const errorSobrante = useMemo(() => {
+    if (resultadoCompra === 'SOBRANTE' && valorSobrante > valorAsignado) {
+      return `El vuelto (S/ ${valorSobrante.toFixed(2)}) no puede ser mayor que el dinero sacado de la caja (S/ ${valorAsignado.toFixed(2)})`
+    }
+    return null
+  }, [resultadoCompra, valorSobrante, valorAsignado])
+
+  const socioAportante = useMemo(() => {
+    const p = participantes.find((part) => part.id === quienAportoAdicional)
+    return p ? p.nombre : 'Socio'
+  }, [participantes, quienAportoAdicional])
+
+  const handleProcesarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
     setCargandoFoto(true)
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const MAX_WIDTH = 1200
-        const MAX_HEIGHT = 1200
-        let width = img.width
-        let height = img.height
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width)
-            width = MAX_WIDTH
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height)
-            height = MAX_HEIGHT
-          }
+    try {
+      const nuevasFotos: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        if (file.type.startsWith('image/')) {
+          const base64 = await comprimirImagen(file)
+          nuevasFotos.push(base64)
         }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height)
-          const base64 = canvas.toDataURL('image/jpeg', 0.8)
-          setComprobantes((prev) => [...prev, base64])
-        }
-        setCargandoFoto(false)
       }
-      img.src = event.target?.result as string
+      setComprobantes((prev) => [...prev, ...nuevasFotos])
+    } catch {
+      alert('Ocurrió un error al procesar las imágenes.')
+    } finally {
+      setCargandoFoto(false)
+      e.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const handleEliminarFoto = (idx: number) => {
@@ -139,7 +221,9 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (esGanar) {
+    if (!movimiento) return
+
+    if (movimiento.tipo === 'GANAR') {
       const ganado = typeof montoGanado === 'number' ? montoGanado : 0
       if (ganado <= 0) {
         alert('Por favor ingresa un monto válido mayor a 0.')
@@ -159,12 +243,17 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
       onGuardarEdicion(actualizado)
       onClose()
     } else {
-      if (valorAsignado <= 0 && valorAdicional <= 0) {
-        alert('Debes ingresar al menos el dinero asignado de caja o el dinero aportado extra.')
+      if (errorSobrante) {
+        alert(errorSobrante)
         return
       }
 
-      if (valorAdicional > 0 && !quienAporto) {
+      if (valorAsignado <= 0 && valorAdicional <= 0 && totalGastadoReal <= 0) {
+        alert('Debes ingresar un monto válido para la compra.')
+        return
+      }
+
+      if (resultadoCompra === 'ADICIONAL' && valorAdicional > 0 && !quienAportoAdicional) {
         alert('Por favor selecciona quién aportó el dinero extra.')
         return
       }
@@ -172,15 +261,16 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
       const actualizado: Movimiento = {
         ...movimiento,
         fecha,
-        descripcion: descripcion.trim(),
+        descripcion: descripcion.trim() || 'Compra de mercadería',
         registrado_por: registradoPor,
         proveedor: proveedor.trim(),
         monto_asignado: valorAsignado,
-        monto_adicional: valorAdicional,
-        quien_aporto_adicional: valorAdicional > 0 ? quienAporto : undefined,
-        monto_sobrante: valorSobrante,
-        destino_sobrante: valorSobrante > 0 ? destinoSobrante : 'NINGUNO',
-        total_gastado: totalGastadoCalculado,
+        monto_adicional: resultadoCompra === 'ADICIONAL' ? valorAdicional : 0,
+        quien_aporto_adicional:
+          resultadoCompra === 'ADICIONAL' && valorAdicional > 0 ? quienAportoAdicional : undefined,
+        monto_sobrante: resultadoCompra === 'SOBRANTE' ? valorSobrante : 0,
+        destino_sobrante: resultadoCompra === 'SOBRANTE' && valorSobrante > 0 ? destinoSobrante : 'NINGUNO',
+        total_gastado: totalGastadoReal,
         comprobantes,
       }
 
@@ -188,6 +278,10 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
       onClose()
     }
   }
+
+  if (!isOpen || !movimiento) return null
+
+  const esGanar = movimiento.tipo === 'GANAR'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
@@ -210,7 +304,7 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
                 Editar Movimiento {movimiento.codigo}
               </h3>
               <p className="text-[11px] text-indigo-200">
-                Tipo: {esGanar ? 'Recaudación (Ganar)' : 'Compra de Mercadería (Comprar)'}
+                {esGanar ? 'Recaudación (Ganar)' : 'Compra de Mercadería (Comprar)'} • Ajuste de valores
               </p>
             </div>
           </div>
@@ -225,7 +319,7 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
           {/* Fecha y Registrado Por */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
             <div>
               <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1 text-[11px]">
                 <Calendar className="w-3.5 h-3.5 text-indigo-600" />
@@ -236,7 +330,7 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
                 required
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-xs"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold text-xs"
               />
             </div>
 
@@ -247,7 +341,7 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
               <select
                 value={registradoPor}
                 onChange={(e) => setRegistradoPor(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-xs"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold text-xs"
               >
                 {participantes.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -258,26 +352,33 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
             </div>
           </div>
 
-          {/* CAMPOS ESPECÍFICOS DE GANAR */}
+          {/* ======================================================== */}
+          {/* CASO GANAR */}
+          {/* ======================================================== */}
           {esGanar && (
             <div className="space-y-3 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200">
               <div>
                 <label className="block font-bold text-emerald-950 uppercase tracking-wider mb-1 text-[11px]">
                   Monto Recaudado (S/):
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  placeholder="0.00"
-                  value={montoGanado}
-                  onChange={(e) =>
-                    setMontoGanado(e.target.value === '' ? '' : parseFloat(e.target.value))
-                  }
-                  className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl font-bold text-emerald-900 text-sm focus:ring-1 focus:ring-emerald-500 outline-none"
-                />
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-lg">
+                    S/
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="0.00"
+                    value={montoGanado}
+                    onChange={(e) =>
+                      setMontoGanado(e.target.value === '' ? '' : parseFloat(e.target.value))
+                    }
+                    className="w-full pl-11 pr-3 py-2.5 bg-white border border-emerald-300 rounded-xl font-black text-emerald-950 text-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -307,187 +408,488 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
             </div>
           )}
 
-          {/* CAMPOS ESPECÍFICOS DE COMPRAR */}
+          {/* ======================================================== */}
+          {/* CASO COMPRAR (FORMATO IDÉNTICO AL MODAL DE REGISTRO) */}
+          {/* ======================================================== */}
           {!esGanar && (
-            <div className="space-y-3 bg-amber-50/40 p-4 rounded-2xl border border-amber-200">
-              <div>
-                <label className="block font-bold text-amber-950 uppercase tracking-wider mb-1 text-[11px]">
-                  Lugar(es) de Compra / Proveedor:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Makro, Vega, Metro..."
-                  value={proveedor}
-                  onChange={(e) => setProveedor(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-medium text-xs focus:ring-1 focus:ring-amber-500 outline-none"
-                />
-              </div>
+            <div className="space-y-4">
+              {/* PASO 1: Dinero Retirado de Caja */}
+              <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-amber-500 transition-colors shadow-2xs">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                        1
+                      </span>
+                      ¿Cuánto dinero sacaste de la Caja? *
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Efectivo llevado de la máquina para pagar (si pagaste 100% de tu bolsillo, pon 0).
+                    </p>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
-                    Monto Asignado de Caja:
-                  </label>
+                <div className="relative mt-2">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+                    S/
+                  </span>
                   <input
                     type="number"
                     inputMode="decimal"
                     step="0.01"
                     min="0"
+                    required
                     placeholder="0.00"
                     value={montoAsignado}
                     onChange={(e) =>
-                      setMontoAsignado(e.target.value === '' ? '' : parseFloat(e.target.value))
+                      handleMontoAsignadoChange(e.target.value ? parseFloat(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold text-xs"
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-bold text-amber-800 uppercase mb-1 text-[11px] flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    ¿Faltó dinero? (Aporte Extra):
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={montoAdicional}
-                    onChange={(e) =>
-                      setMontoAdicional(e.target.value === '' ? '' : parseFloat(e.target.value))
-                    }
-                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-bold text-xs text-amber-900"
-                  />
-                </div>
-              </div>
-
-              {/* Si hubo dinero adicional, quién lo puso */}
-              {valorAdicional > 0 && (
-                <div className="bg-amber-100/70 p-3 rounded-xl border border-amber-300">
-                  <label className="block font-extrabold text-amber-900 uppercase mb-1 text-[10px]">
-                    ¿Quién puso los S/ {valorAdicional} de su bolsillo?
-                  </label>
-                  <select
-                    value={quienAporto}
-                    onChange={(e) => setQuienAporto(e.target.value)}
-                    required
-                    className="w-full px-3 py-1.5 bg-white border border-amber-400 rounded-lg font-bold text-xs text-amber-950"
-                  >
-                    <option value="">Selecciona al socio aportante...</option>
-                    {socios.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre} (Socio Inversionista)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Sobrante */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block font-bold text-slate-700 text-[10px] uppercase mb-1">
-                    Dinero Sobrante (S/):
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={montoSobrante}
-                    onChange={(e) =>
-                      setMontoSobrante(e.target.value === '' ? '' : parseFloat(e.target.value))
-                    }
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold"
-                  />
-                </div>
-
-                {valorSobrante > 0 && (
-                  <div>
-                    <label className="block font-bold text-slate-700 text-[10px] uppercase mb-1">
-                      Destino del Sobrante:
-                    </label>
-                    <select
-                      value={destinoSobrante}
-                      onChange={(e) => setDestinoSobrante(e.target.value as any)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
+                {/* Atajos sugeridos */}
+                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">
+                    Sugeridos:
+                  </span>
+                  {[50, 100, 150, 190.2, 200, 300].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleMontoAsignadoChange(m)}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-600 hover:text-amber-800 transition-colors shrink-0 cursor-pointer"
                     >
-                      <option value="CAJA">Vuelve a la Caja</option>
-                      <option value="REPARTO">Repartir a Socios</option>
-                      <option value="NINGUNO">Ninguno</option>
-                    </select>
+                      S/ {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* PASO 2: Total Gastado en la Compra (Cálculo Automático) */}
+              <div className="bg-white p-4 rounded-2xl border-2 border-slate-200 focus-within:border-amber-500 transition-colors shadow-2xs space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                        2
+                      </span>
+                      ¿Cuánto fue el total gastado en la compra? *
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Ingresa el monto real de la boleta. El sistema calculará la resta contra la caja de forma automática.
+                    </p>
                   </div>
-                )}
-              </div>
-
-              {/* Total Gastado Calculado */}
-              <div className="p-3 bg-white rounded-xl border border-amber-200 flex items-center justify-between font-bold">
-                <span className="text-slate-700">Total Gastado Real (Afecta Caja):</span>
-                <span className="text-sm font-black text-slate-900">
-                  {formatearMoneda(totalGastadoCalculado)}
-                </span>
-              </div>
-
-              {/* Comprobantes / Fotos adjuntas */}
-              <div>
-                <label className="block font-bold text-slate-700 uppercase text-[11px] mb-1.5">
-                  Comprobantes / Fotos ({comprobantes.length}):
-                </label>
-
-                <input
-                  type="file"
-                  ref={cameraInputRef}
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleProcesarFoto}
-                  className="hidden"
-                />
-                <input
-                  type="file"
-                  ref={galleryInputRef}
-                  accept="image/*"
-                  onChange={handleProcesarFoto}
-                  className="hidden"
-                />
-
-                <div className="flex gap-2 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => cameraInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    Cámara
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Galería
-                  </button>
-                  {cargandoFoto && <span className="text-slate-400 self-center">Cargando...</span>}
                 </div>
 
-                {comprobantes.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {comprobantes.map((foto, idx) => (
-                      <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border">
-                        <img src={foto} alt={`Foto ${idx}`} className="w-full h-full object-cover" />
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+                    S/
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={totalBoletaGasto}
+                    onChange={(e) =>
+                      handleTotalGastoChange(e.target.value ? parseFloat(e.target.value) : '')
+                    }
+                    className="w-full pl-11 pr-4 py-2.5 bg-amber-50/40 border border-amber-300 rounded-xl text-lg font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Resultado del cálculo automático */}
+                <div className="pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 mb-1.5">
+                    <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                      Resultado del cálculo automático:
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      (También puedes cambiarlo manualmente)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Exacto */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('EXACTO')
+                        setMontoSobrante('')
+                        setMontoAdicional('')
+                        if (totalBoletaGasto !== '') {
+                          setTotalBoletaGasto(valorAsignado)
+                        }
+                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'EXACTO'
+                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-extrabold text-xs">🎯 Costó Exacto</span>
+                        {resultadoCompra === 'EXACTO' && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Gasto = Caja. Sin vueltos ni deudas.
+                      </p>
+                    </button>
+
+                    {/* Sobró dinero */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('SOBRANTE')
+                        setMontoAdicional('')
+                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'SOBRANTE'
+                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-500/20 text-amber-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-extrabold text-xs">💵 Sobró Vuelto</span>
+                        {resultadoCompra === 'SOBRANTE' && (
+                          <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Costó menos. Hay vuelto en efectivo.
+                      </p>
+                    </button>
+
+                    {/* Faltó dinero */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResultadoCompra('ADICIONAL')
+                        setMontoSobrante('')
+                      }}
+                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                        resultadoCompra === 'ADICIONAL'
+                          ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 text-indigo-950 shadow-xs'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-extrabold text-xs">💳 Faltó Dinero</span>
+                        {resultadoCompra === 'ADICIONAL' && (
+                          <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">
+                        Costó más. Alguien puso de su bolsillo.
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Detalle si SOBRÓ DINERO */}
+                {resultadoCompra === 'SOBRANTE' && (
+                  <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-amber-900 uppercase">
+                          ¿Cuánto dinero sobró de vuelto? (S/) *
+                        </label>
+                        {totalBoletaGasto !== '' && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                            Calculado: S/ {valorAsignado.toFixed(2)} - S/ {Number(totalBoletaGasto).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                          S/
+                        </span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.01"
+                          min="0.01"
+                          max={valorAsignado > 0 ? valorAsignado : undefined}
+                          required
+                          placeholder="0.00"
+                          value={montoSobrante}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseFloat(e.target.value) : ''
+                            setMontoSobrante(val)
+                            if (val !== '' && typeof val === 'number') {
+                              setTotalBoletaGasto(Number((valorAsignado - val).toFixed(2)))
+                            }
+                          }}
+                          className="w-full pl-9 pr-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                        />
+                      </div>
+                      {errorSobrante && (
+                        <p className="text-[11px] text-rose-600 font-bold mt-1">
+                          ⚠️ {errorSobrante}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Destino del vuelto */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-amber-950 uppercase mb-1.5">
+                        ¿Qué se hace con este vuelto de S/ {valorSobrante.toFixed(2)}?
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <button
                           type="button"
-                          onClick={() => handleEliminarFoto(idx)}
-                          className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700"
+                          onClick={() => setDestinoSobrante('CAJA')}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                            destinoSobrante === 'CAJA'
+                              ? 'bg-white border-amber-500 ring-2 ring-amber-500/20 font-bold text-amber-950 shadow-2xs'
+                              : 'bg-white/60 border-amber-200/80 text-slate-700'
+                          }`}
                         >
-                          <X className="w-3 h-3" />
+                          <p className="font-bold flex items-center gap-1 text-slate-900">
+                            <Coins className="w-3.5 h-3.5 text-amber-600" />
+                            Regresar a la Caja
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                            Queda como saldo a favor de la máquina
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDestinoSobrante('REPARTO')}
+                          className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                            destinoSobrante === 'REPARTO'
+                              ? 'bg-white border-amber-500 ring-2 ring-amber-500/20 font-bold text-amber-950 shadow-2xs'
+                              : 'bg-white/60 border-amber-200/80 text-slate-700'
+                          }`}
+                        >
+                          <p className="font-bold flex items-center gap-1 text-slate-900">
+                            <Coins className="w-3.5 h-3.5 text-indigo-600" />
+                            Repartir entre Socios
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                            Se divide según porcentajes pactados
+                          </p>
                         </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
+
+                {/* Detalle si FALTÓ DINERO */}
+                {resultadoCompra === 'ADICIONAL' && (
+                  <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-indigo-950 uppercase">
+                            Monto que faltó (S/) *
+                          </label>
+                          {totalBoletaGasto !== '' && (
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full border border-indigo-300">
+                              Calculado: S/ {Number(totalBoletaGasto).toFixed(2)} - S/ {valorAsignado.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                            S/
+                          </span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            min="0.01"
+                            required
+                            placeholder="0.00"
+                            value={montoAdicional}
+                            onChange={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : ''
+                              setMontoAdicional(val)
+                              if (val !== '' && typeof val === 'number') {
+                                setTotalBoletaGasto(Number((valorAsignado + val).toFixed(2)))
+                              }
+                            }}
+                            className="w-full pl-9 pr-3 py-2 bg-white border border-indigo-300 rounded-xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-indigo-950 uppercase mb-1">
+                          ¿Quién puso este dinero de su bolsillo?
+                        </label>
+                        <select
+                          value={quienAportoAdicional}
+                          onChange={(e) => setQuienAportoAdicional(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-indigo-300 rounded-xl text-xs font-bold text-slate-800"
+                        >
+                          {participantes.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre} ({p.rol})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-indigo-100/70 border border-indigo-200 text-[11px] text-indigo-950 flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-700 shrink-0 mt-0.5" />
+                      <span>
+                        Quedará registrado como <strong>deuda pendiente de la máquina hacia {socioAportante}</strong> por S/ {valorAdicional.toFixed(2)}. Se le devolverá en el próximo cierre o recaudación.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* RESUMEN EN TIEMPO REAL */}
+              <div className="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-md space-y-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs uppercase font-extrabold tracking-wider text-slate-200">
+                      Resumen Claro de la Operación
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30">
+                    En Tiempo Real
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                      Gasto Real en Mercadería
+                    </p>
+                    <p className="text-lg font-black text-amber-400 mt-0.5">
+                      {formatearMoneda(totalGastadoReal)}
+                    </p>
+                    <p className="text-[10px] text-slate-400">Total invertido en productos</p>
+                  </div>
+
+                  <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                      Salida Neta de Caja
+                    </p>
+                    <p className="text-lg font-black text-white mt-0.5">
+                      {formatearMoneda(
+                        Math.max(0, valorAsignado - (destinoSobrante === 'CAJA' ? valorSobrante : 0))
+                      )}
+                    </p>
+                    <p className="text-[10px] text-slate-400">Efectivo final que salió de la máquina</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 p-3 rounded-xl text-xs text-slate-200 leading-relaxed">
+                  <p className="font-bold text-amber-300 mb-0.5">💡 En palabras sencillas:</p>
+                  {resultadoCompra === 'EXACTO' && (
+                    <p>
+                      Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja y se gastaron{' '}
+                      <strong>{formatearMoneda(valorAsignado)}</strong> exactamente en mercadería. No hay vuelto ni deudas.
+                    </p>
+                  )}
+                  {resultadoCompra === 'SOBRANTE' && (
+                    <p>
+                      Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja, pero la mercadería costó solo{' '}
+                      <strong className="text-amber-300">{formatearMoneda(totalGastadoReal)}</strong>. El vuelto de{' '}
+                      <strong>{formatearMoneda(valorSobrante)}</strong>{' '}
+                      {destinoSobrante === 'CAJA'
+                        ? 'regresa íntegro a la caja de la máquina.'
+                        : 'se reparte inmediatamente entre los 3 socios.'}
+                    </p>
+                  )}
+                  {resultadoCompra === 'ADICIONAL' && (
+                    <p>
+                      Sacaste <strong>{formatearMoneda(valorAsignado)}</strong> de la caja, pero la mercadería costó{' '}
+                      <strong className="text-amber-300">{formatearMoneda(totalGastadoReal)}</strong>. Como faltó dinero,{' '}
+                      <strong>{socioAportante}</strong> puso <strong>{formatearMoneda(valorAdicional)}</strong> de su bolsillo. La máquina le devolverá este monto.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Proveedores y Fotos */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-4">
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1 text-[11px] flex items-center gap-1.5">
+                    <Store className="w-3.5 h-3.5 text-slate-500" />
+                    Lugar(es) de Compra / Proveedor:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Makro, Vega, Metro..."
+                    value={proveedor}
+                    onChange={(e) => setProveedor(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs focus:ring-1 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+
+                {/* Comprobantes / Fotos adjuntas */}
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase text-[11px] mb-1.5 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    Comprobantes / Fotos ({comprobantes.length}):
+                  </label>
+
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleProcesarFoto}
+                    className="hidden"
+                  />
+                  <input
+                    type="file"
+                    ref={galleryInputRef}
+                    accept="image/*"
+                    onChange={handleProcesarFoto}
+                    className="hidden"
+                  />
+
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      Cámara
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Galería
+                    </button>
+                    {cargandoFoto && <span className="text-slate-400 self-center">Cargando...</span>}
+                  </div>
+
+                  {comprobantes.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {comprobantes.map((foto, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-2xs">
+                          <img src={foto} alt={`Foto ${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleEliminarFoto(idx)}
+                            className="absolute top-0.5 right-0.5 p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 cursor-pointer"
+                            title="Eliminar foto"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -511,7 +913,7 @@ export const EditarMovimientoModal: React.FC<EditarMovimientoModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-1/3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+              className="w-1/3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
             >
               Cancelar
             </button>
