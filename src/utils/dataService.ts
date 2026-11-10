@@ -134,7 +134,7 @@ export const DataService = {
         return []
       }
 
-      return data.map((row: any) => {
+      const remotos = data.map((row: any) => {
         let comprobantesArray: string[] | undefined = undefined
         if (row.comprobante_url) {
           try {
@@ -213,6 +213,10 @@ export const DataService = {
           ciclo_id: row.ciclo_id || undefined,
         }
       }) as Movimiento[]
+
+      // Sincronizar siempre en el storage local para que el celular y web tengan la misma verdad
+      StorageService.saveMovimientos(remotos)
+      return remotos
     } catch {
       return StorageService.getMovimientos()
     }
