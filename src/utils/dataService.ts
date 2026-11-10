@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient'
 import { StorageService } from './storage'
+import { STORAGE_BUCKET, extraerStoragePath } from './imageHelper'
 import type { CicloMaquina, ConfigReparto, FotoMaquina, Movimiento, Participante, RolDefinicion } from '../types'
 
 
@@ -417,9 +418,16 @@ export const DataService = {
   },
 
   async deleteFotoMaquina(fotoId: string): Promise<void> {
+    const fotoLocal = StorageService.getFotosMaquina().find((f) => f.id === fotoId)
     StorageService.deleteFotoMaquina(fotoId)
     if (supabase && isSupabaseConfigured) {
       try {
+        if (fotoLocal?.foto_url) {
+          const storagePath = extraerStoragePath(fotoLocal.foto_url)
+          if (storagePath) {
+            await supabase.storage.from(STORAGE_BUCKET).remove([storagePath])
+          }
+        }
         const { error } = await supabase
           .from('vending_fotos_maquina')
           .delete()
