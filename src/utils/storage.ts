@@ -297,7 +297,11 @@ export const StorageService = {
   },
 
   saveParticipantes(participantes: Participante[]): void {
-    localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(participantes))
+    try {
+      localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(participantes))
+    } catch (e) {
+      console.warn('No se pudo guardar participantes en localStorage:', e)
+    }
   },
 
   // Gestión de Sesión Activa
@@ -312,15 +316,23 @@ export const StorageService = {
   },
 
   saveSesionUsuario(usuario: Participante | null): void {
-    if (!usuario) {
-      localStorage.removeItem(STORAGE_KEYS.SESION_USUARIO)
-    } else {
-      localStorage.setItem(STORAGE_KEYS.SESION_USUARIO, JSON.stringify(usuario))
+    try {
+      if (!usuario) {
+        localStorage.removeItem(STORAGE_KEYS.SESION_USUARIO)
+      } else {
+        localStorage.setItem(STORAGE_KEYS.SESION_USUARIO, JSON.stringify(usuario))
+      }
+    } catch (e) {
+      console.warn('No se pudo guardar sesión en localStorage:', e)
     }
   },
 
   clearSesionUsuario(): void {
-    localStorage.removeItem(STORAGE_KEYS.SESION_USUARIO)
+    try {
+      localStorage.removeItem(STORAGE_KEYS.SESION_USUARIO)
+    } catch {
+      // ignore
+    }
   },
 
   // Gestión de Fotos de la Máquina
@@ -336,7 +348,16 @@ export const StorageService = {
   },
 
   saveFotosMaquina(fotos: FotoMaquina[]): void {
-    localStorage.setItem(STORAGE_KEYS.FOTOS_MAQUINA, JSON.stringify(fotos))
+    try {
+      localStorage.setItem(STORAGE_KEYS.FOTOS_MAQUINA, JSON.stringify(fotos))
+    } catch {
+      // Si excede la cuota de 5MB de localStorage, guardar versión ligera sin saturar el navegador
+      try {
+        localStorage.removeItem(STORAGE_KEYS.FOTOS_MAQUINA)
+      } catch {
+        // ignore
+      }
+    }
   },
 
   addFotoMaquina(foto: FotoMaquina): void {
@@ -373,7 +394,24 @@ export const StorageService = {
   },
 
   saveCiclos(ciclos: CicloMaquina[]): void {
-    localStorage.setItem(STORAGE_KEYS.CICLOS, JSON.stringify(ciclos))
+    try {
+      localStorage.setItem(STORAGE_KEYS.CICLOS, JSON.stringify(ciclos))
+    } catch {
+      // Si las fotos base64 de los ciclos llenan los 5MB de localStorage, guardar metadatos del ciclo sin fotos pesadas
+      try {
+        localStorage.removeItem(STORAGE_KEYS.FOTOS_MAQUINA)
+        const ciclosLigeros = ciclos.map((c) => ({
+          ...c,
+          foto_antes_url: '',
+          fotos_antes_urls: [],
+          foto_despues_url: undefined,
+          fotos_despues_urls: undefined,
+        }))
+        localStorage.setItem(STORAGE_KEYS.CICLOS, JSON.stringify(ciclosLigeros))
+      } catch (e) {
+        console.warn('Cuota de localStorage excedida al guardar ciclos:', e)
+      }
+    }
   },
 
   addCiclo(ciclo: CicloMaquina): void {
@@ -435,7 +473,11 @@ export const StorageService = {
   },
 
   saveConfigRepartos(configs: ConfigReparto[]): void {
-    localStorage.setItem(STORAGE_KEYS.CONFIG_REPARTO, JSON.stringify(configs))
+    try {
+      localStorage.setItem(STORAGE_KEYS.CONFIG_REPARTO, JSON.stringify(configs))
+    } catch (e) {
+      console.warn('No se pudo guardar config en localStorage:', e)
+    }
   },
 
   getConfiguracionVigente(tipo: 'ganancia' | 'sobrante', fecha: string = new Date().toISOString().slice(0, 10)): ConfigReparto | undefined {
@@ -450,7 +492,11 @@ export const StorageService = {
   getMovimientos(): Movimiento[] {
     const raw = localStorage.getItem(STORAGE_KEYS.MOVIMIENTOS)
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
+      try {
+        localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify([]))
+      } catch {
+        // ignore
+      }
       return []
     }
     try {
@@ -461,7 +507,26 @@ export const StorageService = {
   },
 
   saveMovimientos(movimientos: Movimiento[]): void {
-    localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movimientos))
+    try {
+      localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movimientos))
+    } catch {
+      // Si localStorage está lleno por las fotos de ciclos/máquina, liberar espacio y guardar movimientos
+      try {
+        localStorage.removeItem(STORAGE_KEYS.FOTOS_MAQUINA)
+        localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movimientos))
+      } catch {
+        try {
+          const movsLigeros = movimientos.map((m) => ({
+            ...m,
+            comprobante_url: undefined,
+            comprobantes: undefined,
+          }))
+          localStorage.setItem(STORAGE_KEYS.MOVIMIENTOS, JSON.stringify(movsLigeros))
+        } catch (e) {
+          console.warn('Cuota de localStorage excedida al guardar movimientos:', e)
+        }
+      }
+    }
   },
 
   // Métodos para Proveedores Frecuentes Configurables

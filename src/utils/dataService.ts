@@ -218,7 +218,11 @@ export const DataService = {
       }) as Movimiento[]
 
       // Sincronizar siempre en el storage local para que el celular y web tengan la misma verdad
-      StorageService.saveMovimientos(remotos)
+      try {
+        StorageService.saveMovimientos(remotos)
+      } catch {
+        // Ignorar errores de cuota de localStorage; retornar siempre los datos reales de Supabase
+      }
       return remotos
     } catch {
       return StorageService.getMovimientos()
@@ -390,7 +394,11 @@ export const DataService = {
       const remotas = (data as any[]).map((f) => f as FotoMaquina).sort(
         (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
       )
-      StorageService.saveFotosMaquina(remotas)
+      try {
+        StorageService.saveFotosMaquina(remotas)
+      } catch {
+        // Ignorar cuota de localStorage
+      }
       return remotas
     } catch {
       return locales
@@ -516,7 +524,11 @@ export const DataService = {
       const ordenadas = remotas.sort(
         (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
       )
-      StorageService.saveCiclos(ordenadas)
+      try {
+        StorageService.saveCiclos(ordenadas)
+      } catch {
+        // Ignorar cuota de localStorage
+      }
       return ordenadas
     } catch {
       return locales
