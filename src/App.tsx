@@ -154,6 +154,20 @@ export function App() {
 
   useEffect(() => {
     cargarDatos()
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        cargarDatos()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+    }
   }, [cargarDatos])
 
   // Manejo de Inicio y Cierre de Sesión

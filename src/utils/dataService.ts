@@ -84,12 +84,15 @@ export const DataService = {
         return StorageService.getConfigRepartos()
       }
 
-      return data.map((d: any) => ({
+      const remotos = data.map((d: any) => ({
         id: d.id,
         vigente_desde: d.vigente_desde,
         tipo: d.tipo,
         detalles: d.detalles,
       })) as ConfigReparto[]
+
+      StorageService.saveConfigRepartos(remotos)
+      return remotos
     } catch {
       return StorageService.getConfigRepartos()
     }
@@ -384,20 +387,11 @@ export const DataService = {
         return locales
       }
 
-      const mapa = new Map<string, FotoMaquina>()
-      data.forEach((f: any) => mapa.set(f.id, f as FotoMaquina))
-      for (const loc of locales) {
-        if (!mapa.has(loc.id)) {
-          mapa.set(loc.id, loc)
-          supabase.from('vending_fotos_maquina').insert(loc).then(() => {})
-        }
-      }
-
-      const merged = Array.from(mapa.values()).sort(
+      const remotas = (data as any[]).map((f) => f as FotoMaquina).sort(
         (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
       )
-      StorageService.saveFotosMaquina(merged)
-      return merged
+      StorageService.saveFotosMaquina(remotas)
+      return remotas
     } catch {
       return locales
     }
@@ -519,21 +513,11 @@ export const DataService = {
         } as CicloMaquina
       })
 
-      // Fusionar ciclos remotos y locales para evitar pérdida de datos
-      const mapa = new Map<string, CicloMaquina>()
-      remotas.forEach((c) => mapa.set(c.id, c))
-      for (const loc of locales) {
-        if (!mapa.has(loc.id)) {
-          mapa.set(loc.id, loc)
-          supabase.from('vending_ciclos').insert(loc).then(() => {})
-        }
-      }
-
-      const merged = Array.from(mapa.values()).sort(
+      const ordenadas = remotas.sort(
         (a, b) => (b.creado_el || '').localeCompare(a.creado_el || '')
       )
-      StorageService.saveCiclos(merged)
-      return merged
+      StorageService.saveCiclos(ordenadas)
+      return ordenadas
     } catch {
       return locales
     }
